@@ -1,0 +1,312 @@
+---
+title: "DLNM Plots"
+author: "Anna Stouffer"
+date: "2024-04-10"
+output: html_document
+---
+
+# Andrew - this is an example of how I was making the plots. Bad system - I was running the DLNM analysis file for each thing (like 2000-2022, Max temperature) and then coming over here and generating the plots. And then going back and running the analysis with different parameters and then coming back over here...
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#### saving plot objects max temp overall
+library(ggplot2)
+
+# Convert the matrices to data frames
+temp_values = data.frame(pnest$predvar)
+matfit_df <- data.frame(pnest$matRRfit)
+matlow_df <- data.frame(pnest$matRRlow)
+mathigh_df <- data.frame(pnest$matRRhigh)
+# 
+# # Create a data frame for plotting
+# plot_data <- data.frame(
+#   temp = temp_values,
+#   fit = matfit_df$lag3,  # Values from the first row of matRRfit
+#   low = matlow_df$lag3,  # Values from the first row of matRRlow
+#   high = mathigh_df$lag3  # Values from the first row of matRRhigh
+# )
+# 
+# # Create the plot
+# OMTp3 = ggplot(plot_data, aes(x = pnest.predvar)) +
+#   geom_line(aes(y = fit), color = "red") +
+#   geom_ribbon(aes(ymin = low, ymax = high), fill = "red", alpha = 0.3) +
+#   labs(x = "Maximum Temperature (C)", y = "Odds Ratio") +
+#   geom_hline(yintercept = 1, linetype = "dashed", color = "black") +  # Add horizontal line
+#     scale_x_continuous(breaks = seq(10, 40, by = 5)) +
+#   theme_minimal()
+
+
+
+# List to store the plots
+plot_list <- list()
+
+# Iterate over column indices
+for (i in 0:6) {
+  # Create plot data for the current column index
+  plot_data <- data.frame(
+    temp = temp_values,
+    fit = matfit_df[, paste0("lag", i)],  # Values from the current row of matRRfit
+    low = matlow_df[, paste0("lag", i)],  # Values from the current row of matRRlow
+    high = mathigh_df[, paste0("lag", i)]  # Values from the current row of matRRhigh
+  )
+  
+  # Create the plot for the current column index
+  plot_list[[paste0("OMTp", i)]] <- ggplot(plot_data, aes(x = pnest.predvar)) +
+    geom_line(aes(y = fit), color = "red") +
+    geom_ribbon(aes(ymin = low, ymax = high), fill = "red", alpha = 0.3) +
+    labs(x = NULL, y = NULL) +
+    geom_hline(yintercept = 1, linetype = "dashed", color = "black") +  # Add horizontal line
+    scale_x_continuous(breaks = seq(10, 40, by = 5)) +
+    coord_cartesian(ylim = c(0.5, 1.75)) +  # Set y-axis limits
+    theme_minimal()
+}
+
+
+# Combine plots
+combined_plot <- plot_grid(plotlist = plot_list, nrow = 3)  # Combine plots in a grid layout
+
+OMTp0 = plot_list$OMTp0
+OMTp1 = plot_list$OMTp1
+OMTp2 = plot_list$OMTp2
+OMTp3 = plot_list$OMTp3
+OMTp4 = plot_list$OMTp4
+OMTp5 = plot_list$OMTp5
+OMTp6 = plot_list$OMTp6
+
+
+
+library(cowplot)  # Load the cowplot package
+
+# Combine the plots
+#combined_plot <- plot_grid(plotlist = plot_list, align = "hv", ncol = 3)
+
+# Display the combined plot
+
+
+combined_plot <- (plot_list$OMTp0 / plot_list$OMTp1 / plot_list$OMTp2 ) +
+  plot_layout(guides = 'collect')
+
+print(combined_plot)
+
+
+# Access the plots using plot_list$OMTp0, plot_list$OMTp1, ..., plot_list$OMTp6
+
+```
+
+```{r}
+# saving plot objects max temp wave one
+
+# Convert the matrices to data frames
+temp_values = data.frame(pnest$predvar)
+matfit_df <- data.frame(pnest$matRRfit)
+matlow_df <- data.frame(pnest$matRRlow)
+mathigh_df <- data.frame(pnest$matRRhigh)
+
+
+# List to store the plots
+plot_list <- list()
+
+# Iterate over column indices
+for (i in 0:6) {
+  # Create plot data for the current column index
+  plot_data <- data.frame(
+    temp = temp_values,
+    fit = matfit_df[, paste0("lag", i)],  # Values from the current row of matRRfit
+    low = matlow_df[, paste0("lag", i)],  # Values from the current row of matRRlow
+    high = mathigh_df[, paste0("lag", i)]  # Values from the current row of matRRhigh
+  )
+  
+  # Create the plot for the current column index
+  plot_list[[paste0("W1MTp", i)]] <- ggplot(plot_data, aes(x = pnest.predvar)) +
+    geom_line(aes(y = fit), color = "red") +
+    geom_ribbon(aes(ymin = low, ymax = high), fill = "red", alpha = 0.3) +
+    labs(x = NULL, y = NULL) +
+    geom_hline(yintercept = 1, linetype = "dashed", color = "black") +  # Add horizontal line
+    scale_x_continuous(breaks = seq(10, 40, by = 5)) +
+    coord_cartesian(ylim = c(0.5, 1.75)) +  # Set y-axis limits
+    theme_minimal()
+}
+
+W1MTp0 = plot_list$W1MTp0
+W1MTp1 = plot_list$W1MTp1
+W1MTp2 = plot_list$W1MTp2
+W1MTp3 = plot_list$W1MTp3
+W1MTp4 = plot_list$W1MTp4
+W1MTp5 = plot_list$W1MTp5
+W1MTp6 = plot_list$W1MTp6
+
+
+combined_plot <- ((OMTp0 + W1MTp0) /(OMTp1 + W1MTp1) / (OMTp2 + W1MTp2)) +
+  plot_layout(guides = 'collect')
+
+```
+
+```{r}
+# saving plot objects max temp wave two
+
+# Convert the matrices to data frames
+temp_values = data.frame(pnest$predvar)
+matfit_df <- data.frame(pnest$matRRfit)
+matlow_df <- data.frame(pnest$matRRlow)
+mathigh_df <- data.frame(pnest$matRRhigh)
+
+
+# List to store the plots
+plot_list <- list()
+
+# Iterate over column indices
+for (i in 0:6) {
+  # Create plot data for the current column index
+  plot_data <- data.frame(
+    temp = temp_values,
+    fit = matfit_df[, paste0("lag", i)],  # Values from the current row of matRRfit
+    low = matlow_df[, paste0("lag", i)],  # Values from the current row of matRRlow
+    high = mathigh_df[, paste0("lag", i)]  # Values from the current row of matRRhigh
+  )
+  
+  # Create the plot for the current column index
+  plot_list[[paste0("W2MTp", i)]] <- ggplot(plot_data, aes(x = pnest.predvar)) +
+    geom_line(aes(y = fit), color = "red") +
+    geom_ribbon(aes(ymin = low, ymax = high), fill = "red", alpha = 0.3) +
+    labs(x = NULL, y = NULL) +
+    geom_hline(yintercept = 1, linetype = "dashed", color = "black") +  # Add horizontal line
+    scale_x_continuous(breaks = seq(10, 40, by = 5)) +
+    coord_cartesian(ylim = c(0.5, 1.75)) +  # Set y-axis limits
+    theme_minimal()
+}
+
+W2MTp0 = plot_list$W2MTp0
+W2MTp1 = plot_list$W2MTp1
+W2MTp2 = plot_list$W2MTp2
+W2MTp3 = plot_list$W2MTp3
+W2MTp4 = plot_list$W2MTp4
+W2MTp5 = plot_list$W2MTp5
+W2MTp6 = plot_list$W2MTp6
+
+
+combined_plot <- ((OMTp0 + W1MTp0 + W2MTp0) /(OMTp1 + W1MTp1 + W2MTp1) / (OMTp2 + W1MTp2 + W2MTp2)) +
+  plot_layout(guides = 'collect')
+
+```
+
+```{r}
+# saving plot objects max temp wave two SVI Tertile
+
+# Convert the matrices to data frames
+temp_values = data.frame(pnest$predvar)
+matfit_df <- data.frame(pnest$matRRfit)
+matlow_df <- data.frame(pnest$matRRlow)
+mathigh_df <- data.frame(pnest$matRRhigh)
+
+
+# List to store the plots
+plot_list <- list()
+
+# Iterate over column indices
+for (i in 0:6) {
+  # Create plot data for the current column index
+  plot_data <- data.frame(
+    temp = temp_values,
+    fit = matfit_df[, paste0("lag", i)],  # Values from the current row of matRRfit
+    low = matlow_df[, paste0("lag", i)],  # Values from the current row of matRRlow
+    high = mathigh_df[, paste0("lag", i)]  # Values from the current row of matRRhigh
+  )
+  
+  # Create the plot for the current column index
+  plot_list[[paste0("W2MTp", i)]] <- ggplot(plot_data, aes(x = pnest.predvar)) +
+    geom_line(aes(y = fit), color = "red") +
+    geom_ribbon(aes(ymin = low, ymax = high), fill = "red", alpha = 0.3) +
+    labs(x = NULL, y = NULL) +
+    geom_hline(yintercept = 1, linetype = "dashed", color = "black") +  # Add horizontal line
+    scale_x_continuous(breaks = seq(10, 40, by = 5)) +
+    coord_cartesian(ylim = c(0.5, 1.75)) +  # Set y-axis limits
+    theme_minimal()
+}
+
+# W2MTSVILp0 = plot_list$W2MTp0
+# W2MTSVILp1 = plot_list$W2MTp1
+# W2MTSVILp2 = plot_list$W2MTp2
+# W2MTSVILp3 = plot_list$W2MTp3
+# W2MTSVILp4 = plot_list$W2MTp4
+# W2MTSVILp5 = plot_list$W2MTp5
+# W2MTSVILp6 = plot_list$W2MTp6
+
+W2MTSVIHp0 = plot_list$W2MTp0
+W2MTSVIHp1 = plot_list$W2MTp1
+W2MTSVIHp2 = plot_list$W2MTp2
+W2MTSVIHp3 = plot_list$W2MTp3
+W2MTSVIHp4 = plot_list$W2MTp4
+W2MTSVIHp5 = plot_list$W2MTp5
+W2MTSVIHp6 = plot_list$W2MTp6
+
+
+
+
+
+combined_plot <- ((OMTp0 + W1MTp0 + W2MTp0) /(OMTp1 + W1MTp1 + W2MTp1) / (OMTp2 + W1MTp2 + W2MTp2)) +
+  plot_layout(guides = 'collect')
+
+```
+
+```{r}
+# saving plot objects max temp wave one SVI Tertile
+
+# Convert the matrices to data frames
+temp_values = data.frame(pnest$predvar)
+matfit_df <- data.frame(pnest$matRRfit)
+matlow_df <- data.frame(pnest$matRRlow)
+mathigh_df <- data.frame(pnest$matRRhigh)
+
+
+# List to store the plots
+plot_list <- list()
+
+# Iterate over column indices
+for (i in 0:6) {
+  # Create plot data for the current column index
+  plot_data <- data.frame(
+    temp = temp_values,
+    fit = matfit_df[, paste0("lag", i)],  # Values from the current row of matRRfit
+    low = matlow_df[, paste0("lag", i)],  # Values from the current row of matRRlow
+    high = mathigh_df[, paste0("lag", i)]  # Values from the current row of matRRhigh
+  )
+  
+  # Create the plot for the current column index
+  plot_list[[paste0("W2MTp", i)]] <- ggplot(plot_data, aes(x = pnest.predvar)) +
+    geom_line(aes(y = fit), color = "red") +
+    geom_ribbon(aes(ymin = low, ymax = high), fill = "red", alpha = 0.3) +
+    labs(x = NULL, y = NULL) +
+    geom_hline(yintercept = 1, linetype = "dashed", color = "black") +  # Add horizontal line
+    scale_x_continuous(breaks = seq(15, 40, by = 5)) +
+    coord_cartesian(ylim = c(0.5, 1.75)) +  # Set y-axis limits
+    theme_minimal()
+}
+
+W1MTSVILp0 = plot_list$W2MTp0
+W1MTSVILp1 = plot_list$W2MTp1
+W1MTSVILp2 = plot_list$W2MTp2
+W1MTSVILp3 = plot_list$W2MTp3
+W1MTSVILp4 = plot_list$W2MTp4
+W1MTSVILp5 = plot_list$W2MTp5
+W1MTSVILp6 = plot_list$W2MTp6
+
+# W1MTSVIHp0 = plot_list$W2MTp0
+# W1MTSVIHp1 = plot_list$W2MTp1
+# W1MTSVIHp2 = plot_list$W2MTp2
+# W1MTSVIHp3 = plot_list$W2MTp3
+# W1MTSVIHp4 = plot_list$W2MTp4
+# W1MTSVIHp5 = plot_list$W2MTp5
+# W1MTSVIHp6 = plot_list$W2MTp6
+
+
+
+
+
+combined_plot <- ((W1MTSVILp2 + W1MTSVIHp2) / (W2MTSVILp2 + W2MTSVIHp2)) +
+  plot_layout(guides = 'collect')
+
+```

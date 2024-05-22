@@ -1,0 +1,738 @@
+---
+title: "Uploading Data and Formatting"
+author: "Anna Stouffer"
+date: "2024-01-11"
+output: html_document
+---
+
+# Andrew - this is the most chaotic file of the code >.<
+# this uploads the death and temperature data, puts them in long formats, and combines them in different ways. The issue is that i basically continuously uploaded this file as I worked on my thesis, so as you get further down you have to run other scripts to generate the data that you then use. So basically like try to run this with the data you generated, and wherever it stops working bc you don't have the correct file (should happen when you need matched data), go to file #5
+
+# you will need to run file #9 if you want to do any of the SVI stuff
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+################################################################################
+# uploading data 
+################################################################################
+
+# all deaths (each row represents one death)
+#death_data_all = read.csv("~/Thesis Work/Thesis Files/all_death_data.csv")
+#death_data_all_stimi = read.csv("~/Thesis Work/Thesis Files/all_death_data_stimi_labeled.csv")
+#death_data_labeled = read.csv("~/Thesis Work/Thesis Files/all_death_data_labeled.csv")
+death_data_through_2022 = read.csv("~/Thesis Work/Thesis Files/all_death_data_2022.csv")
+
+death_data_all = death_data_through_2022
+
+# wide-format temperature data (each row is a county and each column is a day)
+max_temperature_data = read.csv("~/Thesis Work/Thesis Files/max_temperature_per_county_per_day_20002022.csv")
+min_temperature_data = read.csv("~/Thesis Work/Thesis Files/min_temperature_per_county_per_day_20002022.csv")
+mean_temperature_data = read.csv("~/Thesis Work/Thesis Files/mean_temperature_per_county_per_day_20002022.csv")
+vpdmin_data = read.csv("~/Thesis Work/Thesis Files/vpdmin_per_county_per_day_20002022.csv")
+vpdmax_data = read.csv("~/Thesis Work/Thesis Files/vpdmax_per_county_per_day_20002022.csv")
+
+vpdmin_data = vpdmax_data
+
+# long-format county populations 
+county_pop = read.csv("~/Thesis Work/Thesis Files/population_per_county_per_year.csv")
+
+#SVI data 
+SVI_data = read.csv("~/Thesis Work/Thesis Files/SVI_data.csv")
+
+
+################################################################################
+################################################################################
+```
+
+```{r}
+# update this
+# note on proportion of opioid deaths
+
+# there are 1927190 total drug-related deaths in NC between 1999 and 2021
+total_death_count = 1927190
+
+# the following is the number of opioid-related deaths
+dim(death_data_all)
+
+print(paste("opioid deaths make up", round((dim(death_data_all)[1]/total_death_count)*100,2), "% of the total deaths in North Carolina over this time period"))
+
+```
+
+```{r}
+# formatting the data appropriately
+death_data_all$Date = as.Date(death_data_all$deathdate)
+
+
+# reshaping the temperature data into a long format
+max_temperature_data_long = max_temperature_data %>%
+  gather(Date, Temperature, starts_with("X"), -GEOID, -county) %>%
+  rename(county = "county")
+min_temperature_data_long = min_temperature_data %>%
+  gather(Date, Temperature, starts_with("X"), -GEOID, -county) %>%
+  rename(county = "county")
+mean_temperature_data_long = mean_temperature_data %>%
+  gather(Date, Temperature, starts_with("X"), -GEOID, -county) %>%
+  rename(county = "county")
+vpdmin_data_long = vpdmin_data %>%
+  gather(Date, MinVPDeficit, starts_with("X"), -GEOID, -county) %>%
+  rename(county = "county")
+
+# converting the date colunm to a date type
+max_temperature_data_long$Date = as.Date(sub("X", "", max_temperature_data_long$Date), format = "%Y.%m.%d")
+min_temperature_data_long$Date = as.Date(sub("X", "", min_temperature_data_long$Date), format = "%Y.%m.%d")
+mean_temperature_data_long$Date = as.Date(sub("X", "", mean_temperature_data_long$Date), format = "%Y.%m.%d")
+vpdmin_data_long$Date = as.Date(sub("X", "", vpdmin_data_long$Date), format = "%Y.%m.%d")
+
+# adding a year column 
+max_temperature_data_long$year = year(max_temperature_data_long$Date)
+min_temperature_data_long$year = year(min_temperature_data_long$Date)
+mean_temperature_data_long$year = year(mean_temperature_data_long$Date)
+vpdmin_data_long$year = year(vpdmin_data_long$Date)
+
+# renaming the fips column to GEOID from population data
+county_pop = county_pop %>%
+  rename(GEOID = fips)
+
+max_temperature_data_long = max_temperature_data_long %>%
+  left_join(county_pop, by = c("year", "county", "GEOID"))
+min_temperature_data_long = min_temperature_data_long %>%
+  left_join(county_pop, by = c("year", "county", "GEOID"))
+mean_temperature_data_long = mean_temperature_data_long %>%
+  left_join(county_pop, by = c("year", "county", "GEOID"))
+vpdmin_data_long = vpdmin_data_long %>%
+  left_join(county_pop, by = c("year", "county", "GEOID"))
+
+# Convert date columns to date class 
+max_temperature_data_long$Date = as.Date(max_temperature_data_long$Date)
+min_temperature_data_long$Date = as.Date(min_temperature_data_long$Date)
+mean_temperature_data_long$Date = as.Date(mean_temperature_data_long$Date)
+vpdmin_data_long$Date = as.Date(vpdmin_data_long$Date)
+
+# rename temperature column to more specific names
+max_temperature_data_long <- max_temperature_data_long %>%
+  rename(MaxTemperature = Temperature)
+min_temperature_data_long <- min_temperature_data_long %>%
+  rename(MinTemperature = Temperature)
+mean_temperature_data_long <- mean_temperature_data_long %>%
+  rename(MeanTemperature = Temperature)
+
+death_data_all$Date = as.Date(death_data_all$deathdate)
+
+# creating a column that has the death count for each date
+combined_data = death_data_all %>%
+  group_by(county, Date) %>%
+  mutate(death_count = n()) %>%
+  ungroup()
+
+
+# selecting only the columns that I want
+combined_data = combined_data %>%
+  dplyr::select(county, Date, death_count, GEOID)
+
+# combining the temperate data with the death data. Should be a row for each date
+combined_data = max_temperature_data_long %>%
+  left_join(combined_data, by = c("county", "Date", "GEOID"))
+combined_data <- left_join(combined_data, min_temperature_data_long %>% dplyr::select(county, Date, GEOID, MinTemperature), by = c("county", "Date", "GEOID"))
+combined_data <- left_join(combined_data, mean_temperature_data_long %>% dplyr::select(county, Date, GEOID, MeanTemperature), by = c("county", "Date", "GEOID"))
+combined_data <- left_join(combined_data, vpdmin_data_long %>% dplyr::select(county, Date, GEOID, MinVPDeficit), by = c("county", "Date", "GEOID"))
+
+
+# adding a death_count column
+combined_data = combined_data %>%
+  mutate(death_count = ifelse(is.na(death_count), 0, death_count))
+
+# adding a death_rate column
+combined_data$death_rate = combined_data$death_count/combined_data$total_population
+
+# replacing NAs with 0s
+combined_data = combined_data %>%
+  mutate(death_rate = ifelse(is.na(death_rate), 0, death_rate))
+
+head(combined_data)
+
+```
+
+```{r}
+# removing duplicated in combined_data
+
+dim(combined_data)
+
+# removing duplicates from combined data
+duplicates = combined_data %>% 
+  group_by(county, Date) %>% 
+  summarise(count = n()) %>% 
+  filter(count > 1)
+
+combined_data = combined_data %>% distinct(county, Date, .keep_all = TRUE)
+
+dim(combined_data)
+head(combined_data)
+
+```
+
+```{r}
+# adding heat index 
+#vpdmax in units hPa
+
+# calculating saturation vapor pressure (units Pa)
+
+# combined_data$SatVapPres = (exp(34.494-((4924.99)/(combined_data$MaxTemperature+273.1)))/((combined_data$MaxTemperature+105)^1.57))
+# 
+# (exp(43.494-((6545.8/(combined_data$MaxTemperature+278)))/((combined_data$MaxTemperature+868)^2))
+
+
+# this didnt save and I need to check on it again
+combined_data <- combined_data %>%
+  mutate(
+    SatVapPres = ifelse(MaxTemperature > 0,
+                        exp(34.494 - (4924.99 / (MaxTemperature + 237.1))) / ((MaxTemperature + 105) ^ 1.57),
+                        exp(43.494 - (6545.8 / (MaxTemperature + 278))) / ((MaxTemperature + 868) ^ 2))
+  )
+
+# converting VPDdeficiet from hPa to Pa
+combined_data$MinVPDeficit = combined_data$MinVPDeficit*100
+
+#vpdmax is actual vapor pressure - sat vapor pressure 
+combined_data$VaporPressure =  combined_data$SatVapPres - combined_data$MinVPDeficit
+
+# relative humidity is vp divided by saturation vapor pressure (multiplied by 100 because numerator is hPa and denom is Pa)
+
+combined_data$RelHum = ((combined_data$VaporPressure)/combined_data$SatVapPres)*100
+
+combined_data$MaxTemperatureF = (combined_data$MaxTemperature*(9/5)) + 32
+
+combined_data$HeatIndex = heat.index(t = combined_data$MaxTemperatureF,
+                                    rh = combined_data$RelHum,
+                                    temperature.metric = "fahrenheit")
+
+
+
+combined_data <- dplyr::select(combined_data, -SatVapPres, -MaxTemperatureF, -MinVPDeficit)
+
+Heat_Index = combined_data %>%
+  select(c("GEOID", "Date", "HeatIndex"))
+
+# #Assuming combined_data is your data frame
+# ggplot(combined_data, aes(x = Date, y = HeatIndex)) +
+#   geom_point() +  # Plotting points
+#   labs(x = "Date", y = "MaxVPDeficit") +  # Labeling axes
+#   theme_minimal()  # Applying minimal theme
+
+
+```
+
+
+```{r}
+
+# adding temperature to the death data 
+
+# Left join and select only the Temperature column
+death_data_all = left_join(death_data_all, combined_data %>% dplyr::select(county, Date, MaxTemperature, MinTemperature, MeanTemperature, HeatIndex, RelHum), by = c("county", "Date"), )
+
+dim(death_data_all)
+```
+
+
+```{r}
+# adding lagged temperature to data 
+
+# Assuming 'Date' is in Date format
+combined_data$Date <- as.Date(combined_data$Date)
+
+# Calculate lagged temperature for the current date and two days before
+combined_data <- combined_data %>%
+  arrange(county, Date) %>%
+  group_by(county) %>%
+  mutate(
+    max_lag_temp_0_2 = (MaxTemperature + lag(MaxTemperature, 1) + lag(MaxTemperature, 2)) / 3,
+    min_lag_temp_0_2 = (MinTemperature + lag(MinTemperature, 1) + lag(MinTemperature, 2)) / 3,
+    mean_lag_temp_0_2 = (MeanTemperature + lag(MeanTemperature, 1) + lag(MeanTemperature, 2)) / 3,
+    max_lag_temp_0_5 = (MaxTemperature + lag(MaxTemperature, 1) + lag(MaxTemperature, 2) + lag(MaxTemperature, 3) + lag(MaxTemperature, 4) + lag(MaxTemperature, 5)) / 6,
+    min_lag_temp_0_5 = (MinTemperature + lag(MinTemperature, 1) + lag(MinTemperature, 2) + lag(MinTemperature, 3) + lag(MinTemperature, 4) + lag(MinTemperature, 5)) / 6,
+    mean_lag_temp_0_5 = (MeanTemperature + lag(MeanTemperature, 1) + lag(MeanTemperature, 2) + lag(MeanTemperature, 3) + lag(MeanTemperature, 4) + lag(MeanTemperature, 5)) / 6,
+  ) %>%
+  ungroup()
+
+head(combined_data)
+# Left join and select relevant columns
+#death_data_all <- left_join(death_data_all, combined_data %>% select(county, Date, lag_temp_0_2), by = c("county", "Date"))
+
+```
+
+
+```{r}
+# organizing the data in different ways
+
+# creating a binary death variable 
+binary_death_data = combined_data %>%
+  mutate(binary_death = ifelse(death_count == 0, 0, 1))
+
+# aggregating data for the whole state
+data_aggregate = combined_data %>%
+  group_by(Date) %>%
+  summarise(
+    MaxTemperature = mean(MaxTemperature),
+    MinTemperature = mean(MinTemperature),
+    MeanTemperature = mean(MeanTemperature),
+    HeatIndex = mean(HeatIndex),
+    RelHum = mean(RelHum),
+    Total_Death_Count = sum(death_count),
+    Population = sum(total_population)
+  )
+
+# Create a new column 'simple_race' considering ethnicity
+death_data_all <- death_data_all %>%
+  mutate(
+    simple_race = case_when(
+      grepl("White", race) & !grepl("Other", race) ~ "White Non-Hispanic",
+      grepl("Black", race) & ethnicity == "N" ~ "Black Non-Hispanic",
+      grepl("Asian|Japanese|Chinese|Filipino", race) & ethnicity == "N" ~ "Asian Non-Hispanic",
+      grepl("American Indian|Native Hawaiian", race) & ethnicity == "N" ~ "Native American Non-Hispanic",
+      ethnicity != "N" ~ "Any Race - Hispanic",
+      TRUE ~ "Other"
+    )
+  )
+
+head(death_data_all)
+
+# Create a new column 'simple_ethnicity'
+death_data_all <- death_data_all %>%
+  mutate(simple_ethnicity = ifelse(ethnicity == "N", "No", "Hispanic"))
+
+# creating age brackets 
+death_data_all = death_data_all %>%
+  mutate(age = as.numeric(age),
+         simple_age = cut(age, breaks = c(-Inf, 17, 24, 34, 44, 54, Inf),
+                         labels = c("0-17", "18-24", "25-34", "35-44", "45-54", "55+"),
+                         include.lowest = TRUE))
+
+```
+
+```{r}
+# adding a column that assigns warm season, cold season, or shoulder season category
+
+head(death_data_all)
+
+# Create a vector to store the seasons
+season_vector <- character(nrow(death_data_all))
+
+# Assign seasons based on the criteria
+season_vector[months(death_data_all$Date) %in% c("May", "June", "July", "August", "September", "October")] <- "warm"
+season_vector[months(death_data_all$Date) %in% c("December", "January", "February", "March")] <- "cool"
+season_vector[months(death_data_all$Date) %in% c("April", "November")] <- "shoulder"
+
+# Add the season column to the dataframe
+death_data_all$season <- season_vector
+
+```
+
+```{r}
+# assigning blocks to the data 
+
+# setting as warm and cool season
+season_vector <- character(nrow(combined_data))
+
+# Assign seasons based on the criteria
+season_vector[months(combined_data$Date) %in% c("May", "June", "July", "August", "September", "October")] <- "warm"
+season_vector[months(combined_data$Date) %in% c("December", "January", "February", "March")] <- "cool"
+season_vector[months(combined_data$Date) %in% c("April", "November")] <- "shoulder"
+
+# Add the season column to the dataframe
+combined_data$season <- season_vector
+```
+
+```{r}
+# making a warm season dataframe
+data_warm_season <- combined_data %>%
+  filter(season == "warm")
+# making blocks in the warm season datafram
+data_warm_season <- data_warm_season %>%
+  mutate(
+    block = (as.numeric(format(Date, "%j")) - as.numeric(format(as.Date(paste0(format(Date, "%Y"), "-05-01")), "%j"))) %/% 21 + 1
+  )
+
+# making a cool season dataframe
+data_cool_season <- combined_data %>%
+  filter(season == "cool")
+data_cool_season <- data_cool_season %>%
+  mutate(
+    month_day = format(Date, "%m-%d"),
+    block = case_when(
+      month_day %in% c("12-01", "12-02", "12-03", "12-04", "12-05", "12-06", "12-07", "12-08", "12-09", "12-10", "12-11", "12-12", "12-13", "12-14", "12-15", "12-16", "12-17", "12-18", "12-19", "12-20", "12-21") ~ 1,
+      month_day %in% c("12-22", "12-23", "12-24", "12-25", "12-26", "12-27", "12-28", "12-29", "12-30", "12-31", "01-01", "01-02", "01-03", "01-04", "01-05", "01-06", "01-07", "01-08", "01-09", "01-10", "01-11") ~ 2,
+      month_day %in% c("01-12", "01-13", "01-14", "01-15", "01-16", "01-17", "01-18", "01-19", "01-20", "01-21", "01-22", "01-23", "01-24", "01-25", "01-26", "01-27", "01-28", "01-29", "01-30", "01-31", "02-01") ~ 3,
+      month_day %in% c("02-02", "02-03", "02-04", "02-05", "02-06", "02-07", "02-08", "02-09", "02-10", "02-11", "02-12", "02-13", "02-14", "02-15", "02-16", "02-17", "02-18", "02-19", "02-20", "02-21") ~ 4,
+      month_day %in% c("02-22", "02-23", "02-24", "02-25", "02-26", "02-27", "02-28", "02-29", "03-01", "03-02", "03-03", "03-04", "03-05", "03-06", "03-07", "03-08", "03-09", "03-10", "03-11", "03-12", "03-13", "03-14") ~ 5,
+      TRUE ~ 6  # Default case, assign a block for any remaining dates
+      # Add more cases if needed
+    )
+  )
+
+data_cool_season <- dplyr::select(data_cool_season, -month_day)
+
+head(data_cool_season, 1000)
+
+
+```
+
+
+```{r}
+# will remove this once i run my data matching function 
+# 
+# matched_data = read.csv("~/Thesis Work/Thesis Files/matched_data.csv")
+# 
+# # adding the uniqueID columns for all the data
+# matched_data <- matched_data %>%
+#   group_by(county) %>%
+#   mutate(uniqueID = ifelse(is.na(uniqueID), lag(uniqueID), uniqueID)) %>%
+#   fill(uniqueID, .direction = "down") %>%
+#   ungroup()
+# 
+# # filling in the NAs in the "year" and "total population" columns
+# matched_data <- matched_data %>%
+#   group_by(county) %>%
+#   mutate(
+#     year = ifelse(is.na(year), lead(year), year),
+#     total_population = ifelse(is.na(total_population), lead(total_population), total_population)
+#   ) %>%
+#   fill(c("year", "total_population"), .direction = "down") %>%
+#   ungroup()
+# 
+# head(matched_data)
+# 
+# # add the sex, race, ethnicity, and age columns to the case-control data
+# matched_data <- left_join(matched_data, death_data_all %>% select(uniqueID, simple_race, simple_age, simple_ethnicity, sex), by = "uniqueID")
+# 
+# # adding lag temperature column
+# matched_data$Date = as.Date(matched_data$Date)
+# matched_data <- left_join(matched_data, combined_data %>% select(county, Date, max_lag_temp_0_2, min_lag_temp_0_2, mean_lag_temp_0_2, max_lag_temp_0_5, min_lag_temp_0_5, mean_lag_temp_0_5), by = c("county", "Date"))
+# 
+# matched_data = na.omit(matched_data)
+# 
+# # Create a vector to store the seasons
+# season_vector <- character(nrow(matched_data))
+# 
+# matched_data$Date = as.Date(matched_data$Date)
+# 
+# # Assign seasons based on the criteria
+# season_vector[months(matched_data$Date) %in% c("May","June", "July", "August", "September", "October")] <- "warm"
+# season_vector[months(matched_data$Date) %in% c("December", "January", "February", "March")] <- "cool"
+# season_vector[months(matched_data$Date) %in% c("April", "November")] <- "shoulder"
+# 
+# # Add the season column to the dataframe
+# matched_data$season <- season_vector
+# 
+# head(matched_data)
+# 
+
+```
+
+```{r}
+# # only warm season deaths
+warm_season_deaths = death_data_all %>%
+  filter(season == "warm")
+
+head(warm_season_deaths)
+
+# assigning blocks to warm season deaths
+warm_season_deaths <- warm_season_deaths %>%
+  mutate(
+    block = (as.numeric(format(Date, "%j")) - as.numeric(format(as.Date(paste0(format(Date, "%Y"), "-05-01")), "%j"))) %/% 21 + 1
+  )
+
+# warm_season_deaths_long_sept = warm_season_deaths_long_sept %>%
+#   filter(block %in% c(1, 2, 3, 4, 5, 6, 7, 8))
+# 
+# # assigning blocks to warm season deaths
+# warm_season_deaths <- warm_season_deaths %>%
+#   mutate(
+#     block = (as.numeric(format(Date, "%j")) - as.numeric(format(as.Date(paste0(format(Date, "%Y"), "-05-01")), "%j"))) %/% 21 + 1
+#   )
+# 
+# #dim(warm_season_deaths_short_sept)
+# 
+# 
+# only cool season deaths
+
+cool_season_deaths = death_data_all %>%
+  filter(season == "cool")
+ 
+cool_season_deaths$Date = as.Date(cool_season_deaths$Date)
+
+cool_season_deaths <- cool_season_deaths %>%
+  mutate(
+    month_day = format(Date, "%m-%d"),
+    block = case_when(
+      month_day %in% c("12-01", "12-02", "12-03", "12-04", "12-05", "12-06", "12-07", "12-08", "12-09", "12-10", "12-11", "12-12", "12-13", "12-14", "12-15", "12-16", "12-17", "12-18", "12-19", "12-20", "12-21") ~ 1,
+      month_day %in% c("12-22", "12-23", "12-24", "12-25", "12-26", "12-27", "12-28", "12-29", "12-30", "12-31", "01-01", "01-02", "01-03", "01-04", "01-05", "01-06", "01-07", "01-08", "01-09", "01-10", "01-11") ~ 2,
+      month_day %in% c("01-12", "01-13", "01-14", "01-15", "01-16", "01-17", "01-18", "01-19", "01-20", "01-21", "01-22", "01-23", "01-24", "01-25", "01-26", "01-27", "01-28", "01-29", "01-30", "01-31", "02-01") ~ 3,
+      month_day %in% c("02-02", "02-03", "02-04", "02-05", "02-06", "02-07", "02-08", "02-09", "02-10", "02-11", "02-12", "02-13", "02-14", "02-15", "02-16", "02-17", "02-18", "02-19", "02-20", "02-21") ~ 4,
+      month_day %in% c("02-22", "02-23", "02-24", "02-25", "02-26", "02-27", "02-28", "02-29", "3-01", "3-02", "3-03", "3-04", "3-05", "3-06", "3-07", "3-08", "3-09", "3-10", "3-11", "3-12", "3-13", "3-14") ~ 5,
+      TRUE ~ 6  # Default case, assign a block for any remaining dates
+      # Add more cases if needed
+    )
+  )
+
+cool_season_deaths <- dplyr::select(cool_season_deaths, -month_day)
+
+# 
+ head(cool_season_deaths, 1000)
+
+```
+
+```{r}
+# adjusting warm-season matched data
+
+warm_season_matched_data_blocks = read.csv("~/Thesis Work/Thesis Files/warm_season_matched_data_blocks_2022.csv")
+
+head(warm_season_matched_data_blocks)
+
+warm_season_matched_data_blocks <- warm_season_matched_data_blocks[, !names(warm_season_matched_data_blocks) %in% "HeatIndex"]
+
+Heat_Index$Date = as.Date(Heat_Index$Date)
+warm_season_matched_data_blocks$Date = as.Date(warm_season_matched_data_blocks$Date)
+
+merged_data <- left_join(warm_season_matched_data_blocks, Heat_Index, by = c("GEOID", "Date"))
+
+# Replace HeatIndex in warm_season_matched_data_blocks with HeatIndex from combined_data
+warm_season_matched_data_blocks$HeatIndex <- merged_data$HeatIndex
+
+# Assuming 'warm_season_matched_data_blocks' is your dataframe
+warm_season_matched_data_blocks <- warm_season_matched_data_blocks %>%
+  mutate(
+    binary = ifelse(case_control == "case", 1, 0)
+  )
+
+# # adding lag temperature column
+# warm_season_matched_data_blocks$Date = as.Date(warm_season_matched_data_blocks$Date)
+# warm_season_matched_data_blocks <- left_join(warm_season_matched_data_blocks, combined_data %>% select(county, Date, max_lag_temp_0_2, min_lag_temp_0_2, mean_lag_temp_0_2, max_lag_temp_0_5, min_lag_temp_0_5, mean_lag_temp_0_5), by = c("county", "Date"))
+
+warm_season_matched_data_blocks$Date = as.Date(warm_season_matched_data_blocks$Date)
+
+# # adding min, mean, and max temperature column (can delete this if I rerun the function for matching data)
+# warm_season_matched_data_blocks <- left_join(warm_season_matched_data_blocks, combined_data %>% select(county, Date, MinTemperature, MaxTemperature, MeanTemperature, HeatIndex), by = c("county", "Date"))
+# head(warm_season_matched_data_blocks)
+# warm_season_matched_data_blocks <- select(warm_season_matched_data_blocks, -Temperature)
+
+
+# # fixing race column
+# warm_season_matched_data_blocks <- warm_season_matched_data_blocks %>%
+#   mutate(
+#     simple_race = case_when(
+#       grepl("White", simple_race) & ethnicity == "No" ~ "White Non-Hispanic",
+#       grepl("Black", simple_race) & ethnicity == "No" ~ "Black Non-Hispanic",
+#       grepl("Asian|Japanese|Chinese|Filipino", simple_race) & ethnicity == "No" ~ "Asian Non-Hispanic",
+#       grepl("American Indian|Native Hawaiian|Native American", simple_race) & ethnicity == "No" ~ "Native American Non-Hispanic",
+#       ethnicity == "Hispanic" ~ "Any Race - Hispanic",
+#       TRUE ~ "Other"
+#     )
+#   )
+
+unique(warm_season_matched_data_blocks$simple_race)
+
+head(warm_season_matched_data_blocks, 1000)
+
+```
+
+```{r}
+
+# adjusting cool-season matched data
+
+cool_season_matched_data_blocks = read.csv("~/Thesis Work/Thesis Files/cool_season_matched_data_blocks_2022.csv")
+
+cool_season_matched_data_blocks <- cool_season_matched_data_blocks[, !names(cool_season_matched_data_blocks) %in% "HeatIndex"]
+
+cool_season_matched_data_blocks$Date = as.Date(cool_season_matched_data_blocks$Date)
+
+merged_data <- left_join(cool_season_matched_data_blocks, Heat_Index, by = c("GEOID", "Date"))
+
+# Replace HeatIndex in warm_season_matched_data_blocks with HeatIndex from combined_data
+cool_season_matched_data_blocks$HeatIndex <- merged_data$HeatIndex
+
+# Assuming 'warm_season_matched_data_blocks' is your dataframe
+cool_season_matched_data_blocks <- cool_season_matched_data_blocks %>%
+  mutate(
+    binary = ifelse(case_control == "case", 1, 0)
+  )
+
+# adding lag temperature column
+cool_season_matched_data_blocks$Date = as.Date(cool_season_matched_data_blocks$Date)
+cool_season_matched_data_blocks <- left_join(cool_season_matched_data_blocks, combined_data %>% dplyr::select(county, Date, max_lag_temp_0_2, min_lag_temp_0_2, mean_lag_temp_0_2, max_lag_temp_0_5, min_lag_temp_0_5, mean_lag_temp_0_5), by = c("county", "Date"))
+
+# fixing race column
+cool_season_matched_data_blocks <- cool_season_matched_data_blocks %>%
+  mutate(
+    simple_race = case_when(
+      grepl("White", simple_race) & ethnicity == "No" ~ "White Non-Hispanic",
+      grepl("Black", simple_race) & ethnicity == "No" ~ "Black Non-Hispanic",
+      grepl("Asian|Japanese|Chinese|Filipino", simple_race) & ethnicity == "No" ~ "Asian Non-Hispanic",
+      grepl("American Indian|Native Hawaiian|Native American", simple_race) & ethnicity == "No" ~ "Native American Non-Hispanic",
+      ethnicity == "Hispanic" ~ "Any Race - Hispanic",
+      TRUE ~ "Other"
+    )
+  )
+
+```
+
+
+
+```{r}
+# # adjusting the block periods for analytics 
+# 
+# cool_season_deaths = death_data_all %>%
+#   filter(season == "cool")
+# 
+# cool_season_deaths$Date = as.Date(cool_season_deaths$Date)
+# 
+# cool_season_deaths_short_feb <- cool_season_deaths %>%
+#   mutate(
+#     month_day = format(Date, "%m-%d"),
+#     block = case_when(
+#       month_day %in% c("12-01", "12-02", "12-03", "12-04", "12-05", "12-06", "12-07", "12-08", "12-09", "12-10", "12-11", "12-12", "12-13", "12-14", "12-15", "12-16", "12-17", "12-18", "12-19", "12-20", "12-21") ~ 1,
+#       month_day %in% c("12-22", "12-23", "12-24", "12-25", "12-26", "12-27", "12-28", "12-29", "12-30", "12-31", "01-01", "01-02", "01-03", "01-04", "01-05", "01-06", "01-07", "01-08", "01-09", "01-10", "01-11") ~ 2,
+#       month_day %in% c("01-12", "01-13", "01-14", "01-15", "01-16", "01-17", "01-18", "01-19", "01-20", "01-21", "01-22", "01-23", "01-24", "01-25", "01-26", "01-27", "01-28", "01-29", "01-30", "01-31", "02-01") ~ 3,
+#       month_day %in% c("02-02", "02-03", "02-04", "02-05", "02-06", "02-07", "02-08", "02-09", "02-10", "02-11", "02-12", "02-13", "02-14", "02-15", "02-16", "02-17", "02-18", "02-19", "02-20", "02-21") ~ 4,
+#       TRUE ~ 6  # Default case, assign a block for any remaining dates
+#       # Add more cases if needed
+#     )
+#   )
+# 
+# cool_season_deaths_short_feb <- select(cool_season_deaths_short_feb, -month_day)
+# 
+# cool_season_deaths_long_feb <- cool_season_deaths %>%
+#   mutate(
+#     month_day = format(Date, "%m-%d"),
+#     block = case_when(
+#       month_day %in% c("12-01", "12-02", "12-03", "12-04", "12-05", "12-06", "12-07", "12-08", "12-09", "12-10", "12-11", "12-12", "12-13", "12-14", "12-15", "12-16", "12-17", "12-18", "12-19", "12-20", "12-21") ~ 1,
+#       month_day %in% c("12-22", "12-23", "12-24", "12-25", "12-26", "12-27", "12-28", "12-29", "12-30", "12-31", "01-01", "01-02", "01-03", "01-04", "01-05", "01-06", "01-07", "01-08", "01-09", "01-10", "01-11") ~ 2,
+#       month_day %in% c("01-12", "01-13", "01-14", "01-15", "01-16", "01-17", "01-18", "01-19", "01-20", "01-21", "01-22", "01-23", "01-24", "01-25", "01-26", "01-27", "01-28", "01-29", "01-30", "01-31", "02-01") ~ 3,
+#       month_day %in% c("02-02", "02-03", "02-04", "02-05", "02-06", "02-07", "02-08", "02-09", "02-10", "02-11", "02-12", "02-13", "02-14", "02-15", "02-16", "02-17", "02-18", "02-19", "02-20", "02-21") ~ 4,
+#       month_day %in% c("02-22", "02-23", "02-24", "02-25", "02-26", "02-27", "02-28", "02-29", "3-01", "3-02", "3-03", "3-04", "3-05", "3-06", "3-07", "3-08", "3-09", "3-10", "3-11", "3-12", "3-13", "3-14") ~ 5,
+# 
+#       TRUE ~ 6  # Default case, assign a block for any remaining dates
+#       # Add more cases if needed
+#     )
+#   )
+# 
+# cool_season_deaths_long_feb <- select(cool_season_deaths_long_feb, -month_day)
+# 
+# 
+# warm_season_deaths_short_sept = warm_season_deaths %>%
+#   filter(block %in% c(1, 2, 3, 4, 5, 6, 7))
+# 
+# dim(warm_season_deaths_short_sept)
+# 
+# head(warm_season_matched_data_blocks)
+# 
+# head(cool_season_deaths_short_feb)
+
+```
+
+
+```{r}
+# 
+# matched_data_warm_blocks = read.csv("~/Thesis Work/Thesis Files/warm_season_matched_blocks_updated_ICD10.csv")
+# head(matched_data_warm_blocks, 1000)
+# names(combined_data)
+# 
+# # Merge matched_data_warm_blocks with combined_data to add HeatIndex column
+# matched_data_warm_blocks <- merge(matched_data_warm_blocks, 
+#                                    combined_data[c("county", "Date", "HeatIndex")],
+#                                    by = c("county", "Date"),
+#                                    all.x = TRUE)
+# 
+# # View the updated dataset
+# head(matched_data_warm_blocks)
+
+
+
+```
+
+```{r}
+# adding SVI tertile to data
+
+death_data_all <- left_join(death_data_all, SVI_data, by = "GEOID")
+
+warm_season_matched_data_blocks = left_join(warm_season_matched_data_blocks, SVI_data, by = "GEOID")
+combined_data
+
+warm_season_matched_data_blocks <- merge(warm_season_matched_data_blocks, combined_data[, c("Date", "county", "RelHum")], by = c("Date", "county"), all.x = TRUE)
+
+
+cool_season_matched_data_blocks = left_join(cool_season_matched_data_blocks, SVI_data, by = "GEOID")
+
+cool_season_matched_data_blocks <- merge(cool_season_matched_data_blocks, combined_data[, c("Date", "county", "RelHum")], by = c("Date", "county"), all.x = TRUE)
+
+# waiting for code from frank for this 
+
+
+```
+
+
+```{r}
+# adding in race weighted temp for max temp
+warm_season_matched_data_blocks
+
+race_weighted_max_temp = read.csv("~/Thesis Work/Thesis Files/RaceWeightedMaxTemp.csv")
+
+race_weighted_max_temp <- race_weighted_max_temp %>%
+  rename(GEOID = County)
+
+warm_season_matched_data_blocks$Date = as.Date(warm_season_matched_data_blocks$Date)
+race_weighted_max_temp$Date = as.Date(race_weighted_max_temp$Date)
+
+warm_season_matched_data_blocks <- warm_season_matched_data_blocks %>%
+  left_join(race_weighted_max_temp, by = c("GEOID", "Date"))
+
+warm_season_matched_data_blocks <- warm_season_matched_data_blocks %>%
+  mutate(RaceWeightedMaxTemp = case_when(
+    simple_race == "White Non-Hispanic" ~ WhiteMaxTemp,
+    simple_race == "Black Non-Hispanic" ~ BlackMaxTemp,
+    simple_race == "Asian Non-Hispanic" ~ AsianMaxTemp,
+    simple_race == "Any Race - Hispanic" ~ HispanicMaxTemp,
+    simple_race == "Native American Non-Hispanic" ~ MaxTemperature,
+    simple_race == "Other" ~ MaxTemperature,
+    TRUE ~ NA_real_
+  ))
+
+warm_season_matched_data_blocks <- warm_season_matched_data_blocks %>%
+  select(-WhiteMaxTemp, -BlackMaxTemp, -AsianMaxTemp, -HispanicMaxTemp)
+
+```
+
+```{r}
+# adding in race weighted temp for min temp
+cool_season_matched_data_blocks
+
+race_weighted_min_temp = read.csv("~/Thesis Work/Thesis Files/RaceWeightedMinTemp.csv")
+
+race_weighted_min_temp <- race_weighted_min_temp %>%
+  rename(GEOID = County)
+
+cool_season_matched_data_blocks$Date = as.Date(cool_season_matched_data_blocks$Date)
+race_weighted_min_temp$Date = as.Date(race_weighted_min_temp$Date)
+
+cool_season_matched_data_blocks <- cool_season_matched_data_blocks %>%
+  left_join(race_weighted_min_temp, by = c("GEOID", "Date"))
+
+cool_season_matched_data_blocks <- cool_season_matched_data_blocks %>%
+  mutate(RaceWeightedMinTemp = case_when(
+    simple_race == "White Non-Hispanic" ~ WhiteMinTemp,
+    simple_race == "Black Non-Hispanic" ~ BlackMinTemp,
+    simple_race == "Asian Non-Hispanic" ~ AsianMinTemp,
+    simple_race == "Any Race - Hispanic" ~ HispanicMinTemp,
+    simple_race == "Native American Non-Hispanic" ~ MinTemperature,
+    simple_race == "Other" ~ MinTemperature,
+    TRUE ~ NA_real_
+  ))
+
+cool_season_matched_data_blocks <- cool_season_matched_data_blocks %>%
+  select(-WhiteMinTemp, -BlackMinTemp, -AsianMinTemp, -HispanicMinTemp)
+
+```
+

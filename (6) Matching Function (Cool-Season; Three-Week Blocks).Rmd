@@ -1,0 +1,172 @@
+---
+title: "Matching Function"
+author: "Anna Stouffer"
+date: "2024-01-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Andrew - same deal but with the cool season 
+
+# To execute this function, you must run the 'Uploading Data and Formatting' script first
+
+## this function matches deaths (cases) with controls within the same three-week block. The warm season (May 1 - September 30) each year is divided into 21 day intervals. Block 1 corresponds to May 1 - 21 of each year. 
+
+```{r}
+#loop isnt working ... check on this ...
+
+################################################################################
+################### FUNCTION TO MATCH CASES WITH CONTROLS ######################
+################################################################################
+
+# # subsetting data for testing the loop
+# subset_data = cool_season_deaths %>%
+#   filter(county %in% c("Alamance"),
+#          year %in% 2000:2022)
+# 
+# i = seq_len(nrow(year_data))[1]
+# #
+# data = subset_data
+# temp_data = data_cool_season
+# County = "Alamance"
+# Year = 2020
+
+# Function to match deaths to referent days within the same month and day of the week
+match_referent_days <- function(data, temp_data) {
+  matched_data <- data.frame()
+
+  unique_counties <- unique(data$county)
+  unique_years <- unique(data$year)
+
+  for (County in unique_counties) {
+
+    county_data <- data %>% filter(county == County)
+
+    print(paste(County))
+
+    for (Year in unique_years) {
+      year_data <- county_data %>% filter(year == Year)
+      print(paste(Year))
+
+      # Filter data to include only "December", "January", "February"
+      year_data_filtered <- year_data %>%
+        filter(months(Date) %in% c("December", "January", "February", "March"))
+
+      # Check if year_data_filtered is empty
+      if (nrow(year_data_filtered) == 0) {
+        warning(paste("No valid dates for year:", Year))
+        next  # Skip to the next year
+      }
+
+      for (i in seq_len(nrow(year_data_filtered))) {
+
+        case_date <- year_data_filtered$Date[i]
+        case_min_temp <- year_data_filtered$MinTemperature[i]
+        case_max_temp <- year_data_filtered$MaxTemperature[i]
+        case_mean_temp <- year_data_filtered$MeanTemperature[i]
+        case_heat_index = year_data_filtered$HeatIndex[i]
+        case_opioid = year_data_filtered$opioid_contributing[i]
+        case_cocaine = year_data_filtered$cocaine_contributing[i]
+        case_stimi = year_data_filtered$other_stimi_contributing[i]
+        case_day_of_week <- weekdays(case_date)
+        case_year <- year(year_data_filtered$Date[i])
+        case_county <- year_data_filtered$county[i]
+        case_GEOID <- year_data_filtered$GEOID[i]
+        case_uniqueID <- year_data_filtered$uniqueID[i]
+        case_sex <- year_data_filtered$sex[i]
+        case_race <- year_data_filtered$simple_race[i]
+        case_age <- year_data_filtered$simple_age[i]
+        case_ethnicity <- year_data_filtered$simple_ethnicity[i]
+        case_block = year_data_filtered$block[i]
+
+        referent_days <- temp_data %>%
+          filter(
+            year == case_year,
+            months(Date) %in% c("December", "January", "February", "March"),
+            weekdays(Date) == case_day_of_week,
+            county == case_county,
+            Date != case_date,
+            block == case_block
+          )
+
+        # print(paste(case_county))
+        # print(paste("Case date:", case_date))
+        # print(paste("Referent days found:", nrow(referent_days)))
+
+        if (nrow(referent_days) == 0) {
+          warning(paste("No referent days for case at Date:", case_date))
+          next
+        }
+
+        case_data <- data.frame(
+          Date = case_date,
+          county = case_county,
+          GEOID = case_GEOID,
+          MinTemperature = year_data_filtered$MinTemperature[i],
+          MaxTemperature = year_data_filtered$MaxTemperature[i],
+          MeanTemperature = year_data_filtered$MeanTemperature[i],
+          HeatIndex = year_data_filtered$HeatIndex[i],
+          uniqueID = case_uniqueID,
+          case_control = "case",
+          opioid_contributing = case_opioid,
+          cocaine_contributing = case_cocaine,
+          other_stimi_contributing = case_stimi,
+          year = case_year,
+          total_population = referent_days$total_population[1],
+          simple_race = case_race,
+          sex = case_sex,
+          ethnicity = case_ethnicity,
+          simple_age = case_age,
+          block = case_block
+        )
+
+        control_data <- referent_days %>%
+          mutate(
+            uniqueID = case_uniqueID,
+            case_control = "control",
+            simple_race = case_data$simple_race,
+            sex = case_data$sex,
+            ethnicity = case_data$ethnicity,
+            simple_age = case_data$simple_age,
+            block = case_block,
+            opioid_contributing = case_data$opioid_contributing,
+            cocaine_contributing = case_data$cocaine_contributing,
+            other_stimi_contributing = case_data$other_stimi_contributing
+          ) %>%
+          select(
+            Date, county, GEOID, MinTemperature, MaxTemperature, MeanTemperature, HeatIndex, uniqueID, case_control, opioid_contributing, cocaine_contributing, other_stimi_contributing, 
+            year, total_population, simple_race, sex, ethnicity, simple_age, block
+          )
+
+        matched_case_referent <- bind_rows(case_data, control_data)
+
+        matched_case_referent$Date <- as.Date(matched_case_referent$Date)
+        matched_data$Date <- as.Date(matched_data$Date)
+
+        matched_data <- bind_rows(matched_data, matched_case_referent)
+      }
+    }
+  }
+
+  return(matched_data)
+}
+
+
+# Apply the matching function
+matched_data_cool_blocks = match_referent_days(cool_season_deaths, data_cool_season)
+
+
+head(matched_data_cool_blocks, 1000)
+
+# # to save the data to file
+# write.csv(matched_data_cool_blocks, "~/Thesis Work/Thesis Files/cool_season_matched_data_blocks_2022.csv", row.names = FALSE)
+
+################################################################################
+################################################################################
+
+
+```
+

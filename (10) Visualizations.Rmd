@@ -1,0 +1,1530 @@
+---
+title: "Visualizations"
+author: "Anna Stouffer"
+date: "2024-01-11"
+output: html_document
+---
+
+# this is how I generate my plots
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# frequency plot of death counts on any given day
+
+ggplot(data_aggregate, aes(x = Total_Death_Count)) +
+  geom_histogram(binwidth = 1, fill = "blue", color = "black", alpha = 0.7) +
+  labs(title = "Frequency of Death Counts",
+       x = "Total Death Count",
+       y = "Frequency") +
+  theme_minimal()
+```
+
+```{r}
+##### visualizing splines 
+
+# creating a death rate column on the aggregate state data (not stratified by county)
+data_aggregate$Death_Rate = ((data_aggregate$Total_Death_Count)/(data_aggregate$Population))*100000
+names(data_aggregate)
+
+# assigning variables
+max_temperature = data_aggregate$MaxTemperature
+min_temperature = data_aggregate$Average_Min_Temperature
+mean_temperature = data_aggregate$Average_Mean_Temperature
+death_rate = data_aggregate$Death_Rate
+death_count = data_aggregate$Total_Death_Count
+date = as.Date(data_aggregate$Date)
+
+max_temperature
+
+###### temperature #######
+# creating a smooth spline
+smooth_spline_max_temp = smooth.spline(date, max_temperature, spar = 0.5)
+# plot
+plot(date, max_temperature, pch = 16, col = "blue", main = "Max Temperature", xlab = "Date", ylab = "Max Temperature")
+lines(smooth_spline_max_temp, col = "red", lwd = 2)
+
+# creating a smooth spline
+smooth_spline_min_temp = smooth.spline(date, min_temperature, spar = 0.5)
+# plot
+plot(date, min_temperature, pch = 16, col = "blue", main = "Min Temperature Spline", xlab = "Date", ylab = "Min Temperature")
+lines(smooth_spline_min_temp, col = "red", lwd = 2)
+
+# creating a smooth spline
+smooth_spline_mean_temp = smooth.spline(date, mean_temperature, spar = 0.5)
+# plot
+plot(date, mean_temperature, pch = 16, col = "blue", main = "Mean Temperature Spline", xlab = "Date", ylab = "Mean Temperature")
+lines(smooth_spline_max_temp, col = "red", lwd = 2)
+
+
+###### Death Rate #########
+smooth_spline_death_rate = smooth.spline(date, death_rate, spar = 0.5)
+plot(date, death_rate, pch = 16, col = "blue", main = "State Death Rate Spline", xlab = "Date", ylab = "Death Rate (deaths per 100,000 people per day)")
+lines(smooth_spline_death_rate, col = "red", lwd = 2)
+
+
+###### Death Count ########
+smooth_spline_death_count = smooth.spline(date, death_count, spar = 0.5)
+plot(date, death_count, pch = 16, col = "blue", main = "State Death Count Spline", xlab = "Date", ylab = "Number of Deaths Per Day")
+lines(smooth_spline_death_count, col = "red", lwd = 2)
+
+```
+
+```{r}
+# data visual by demographics 
+
+# Example for race
+ggplot(death_data_all, aes(x = simple_race, fill = simple_race)) +
+  geom_bar() +
+  labs(title = "Proportions of Death by Race", x = "Race", y = "Count") +
+  theme_minimal()
+
+# Example for sex 
+ggplot(death_data_all, aes(x = sex, fill = sex)) +
+  geom_bar() +
+  labs(title = "Proportions of Death by Sex", x = "Sex", y = "Count") +
+  theme_minimal()
+
+# Example for ethnicity
+ggplot(death_data_all, aes(x = simple_ethnicity, fill = simple_ethnicity)) +
+  geom_bar() +
+  labs(title = "Proportions of Death by Ethnicity", x = "Ethnicity", y = "Count") +
+  theme_minimal()
+
+# Example for age
+ggplot(death_data_all, aes(x = simple_age, fill = simple_age)) +
+  geom_bar() +
+  labs(title = "Proportions of Death by Age", x = "Age", y = "Count") +
+  theme_minimal()
+
+```
+
+```{r}
+
+
+SVI_data
+
+hist(SVI_data$SVI, main = "Distribution of SVI", xlab = "SVI Value", ylab = "Frequency")
+
+
+# Example for age
+ggplot(death_data_all, aes(x = SVI_tertile, fill = SVI_tertile)) +
+  geom_bar() +
+  labs(title = "Proportions of Death by SVI tertile", x = "SVI Tertile", y = "Count") +
+  theme_minimal()
+
+death_data_all_black = death_data_all %>%
+  filter(simple_race == "Black Non-Hispanic")
+
+ggplot(death_data_all_black, aes(x = SVI_tertile, fill = SVI_tertile)) +
+  geom_bar() +
+  labs(title = "Proportions of Black Deaths by SVI tertile", x = "SVI Tertile", y = "Count") +
+  theme_minimal()
+
+death_data_all_white = death_data_all %>%
+  filter(simple_race == "White Non-Hispanic")
+
+ggplot(death_data_all_white, aes(x = SVI_tertile, fill = SVI_tertile)) +
+  geom_bar() +
+  labs(title = "Proportions of White Deaths by SVI tertile", x = "quartile", y = "Count") +
+  theme_minimal()
+
+
+```
+
+```{r}
+# visualizing if cases fall at the beginning or end of the month
+
+head(death_data_all)
+names(death_data_all)
+
+death_data_all_plotting = death_data_all
+
+# Assuming your dataset is named 'deaths_data'
+# Convert 'deathdate' to Date format
+death_data_all_plotting$Date = as.Date(death_data_all_plotting$Date)
+
+# Extract month and day from 'deathdate'
+death_data_all_plotting$month = format(death_data_all_plotting$Date, "%m")
+death_data_all_plotting$day = as.numeric(format(death_data_all_plotting$Date, "%d"))
+
+# Create a variable indicating the week of the month
+death_data_all_plotting$week_of_month = cut(death_data_all_plotting$day, breaks = c(0, 7, 14, 21, 28, 31), labels = c("Week 1", "Week 2", "Week 3", "Week 4", "Week 5"))
+
+
+# Plot deaths by day of the month
+ggplot(death_data_all_plotting, aes(x = day, fill = factor(day))) +
+  geom_bar(fill="deepskyblue") +
+  labs(title = "Deaths by Day of the Month",
+       x = "Day of the Month",
+       y = "Number of Deaths",
+       fill = "Day") +
+  theme_minimal()
+
+# Plot deaths by week of the month
+ggplot(death_data_all_plotting, aes(x = week_of_month, fill = week_of_month)) +
+  geom_bar() +
+  labs(title = "Deaths by Week of the Month",
+       x = "Week of the Month",
+       y = "Number of Deaths") +
+  theme_minimal()
+
+# Plot deaths by month
+ggplot(death_data_all_plotting, aes(x = month, fill = month)) +
+  geom_bar() +
+  scale_fill_grey() +
+  labs(title = "Deaths by Month",
+       x = "Month",
+       y = "Number of Deaths") +
+  theme_minimal()  
+
+# Plot deaths by month
+ggplot(death_data_all_plotting, aes(x = month, fill = month)) +
+  geom_bar(fill="skyblue") +
+  labs(title = "Deaths by Month",
+       x = "Month",
+       y = "Number of Deaths") +
+  theme_minimal()  
+
+
+```
+
+```{r}
+# visualizations for only warm season months
+
+# Assuming your dataset is named 'deaths_data'
+# Convert 'deathdate' to Date format
+warm_season_deaths$Date = as.Date(warm_season_deaths$Date)
+
+# Extract month and day from 'deathdate'
+warm_season_deaths$month = format(warm_season_deaths$Date, "%m")
+warm_season_deaths$day = as.numeric(format(warm_season_deaths$Date, "%d"))
+
+# Create a variable indicating the week of the month
+warm_season_deaths$week_of_month = cut(warm_season_deaths$day, breaks = c(0, 7, 14, 21, 28, 31), labels = c("Week 1", "Week 2", "Week 3", "Week 4", "Week 5"))
+
+# Plot deaths by day of the month
+ggplot(warm_season_deaths, aes(x = day, fill = factor(day))) +
+  geom_bar() +
+  labs(title = "Deaths by Day of the Month",
+       x = "Day of the Month",
+       y = "Number of Deaths") +
+  theme_minimal()
+
+# Plot deaths by week of the month
+ggplot(warm_season_deaths, aes(x = week_of_month, fill = week_of_month)) +
+  geom_bar() +
+  labs(title = "Deaths by Week of the Month",
+       x = "Week of the Month",
+       y = "Number of Deaths") +
+  theme_minimal()
+
+# Plot deaths by month
+ggplot(warm_season_deaths, aes(x = month, fill = month)) +
+  geom_bar() +
+  labs(title = "Deaths by Month",
+       x = "Month",
+       y = "Number of Deaths") +
+  theme_minimal()  
+
+# Plot deaths by time strata
+ggplot(warm_season_deaths, aes(x = block, fill = factor(block))) +
+  geom_bar() +
+  labs(title = "Deaths by Time Strata",
+       x = "Time Strata",
+       y = "Number of Deaths") +
+  theme_minimal()
+
+```
+
+```{r}
+# visualizations for only cool season
+
+# Assuming your dataset is named 'deaths_data'
+# Convert 'deathdate' to Date format
+cool_season_deaths$Date = as.Date(cool_season_deaths$Date)
+
+# Extract month and day from 'deathdate'
+cool_season_deaths$month = format(cool_season_deaths$Date, "%m")
+cool_season_deaths$day = as.numeric(format(cool_season_deaths$Date, "%d"))
+
+# Create a variable indicating the week of the month
+cool_season_deaths$week_of_month = cut(cool_season_deaths$day, breaks = c(0, 7, 14, 21, 28, 31), labels = c("Week 1", "Week 2", "Week 3", "Week 4", "Week 5"))
+
+
+# Plot deaths by day of the month
+ggplot(cool_season_deaths, aes(x = day, fill = factor(day))) +
+  geom_bar() +
+  labs(title = "Deaths by Day of the Month",
+       x = "Day of the Month",
+       y = "Number of Deaths") +
+  theme_minimal()
+
+# Plot deaths by week of the month
+ggplot(cool_season_deaths, aes(x = week_of_month, fill = week_of_month)) +
+  geom_bar() +
+  labs(title = "Deaths by Week of the Month",
+       x = "Week of the Month",
+       y = "Number of Deaths") +
+  theme_minimal()
+
+# Plot deaths by month
+ggplot(cool_season_deaths, aes(x = month, fill = month)) +
+  geom_bar() +
+  labs(title = "Deaths by Month",
+       x = "Month",
+       y = "Number of Deaths") +
+  theme_minimal()  
+
+```
+
+```{r}
+# checking distribution of warm block data
+
+head(warm_season_matched_data_blocks, 1000)
+
+#warm_season_matched_data_blocks = matched_data_warm_blocks
+
+# Data preparation
+data <- warm_season_matched_data_blocks %>%
+  arrange(uniqueID, Date) %>%
+  group_by(uniqueID) %>%
+  mutate(
+    case_position = case_control == "case",
+    control_position = case_control == "control"
+  ) %>%
+  filter(case_position | control_position) %>%
+  summarise(
+    before_count = sum(case_position & Date < min(Date[control_position])),
+    between_count = sum(case_position & Date > min(Date[control_position]) & Date < max(Date[control_position])),
+    after_count = sum(case_position & Date > max(Date[control_position]))
+  ) %>%
+  pivot_longer(cols = c(before_count, between_count, after_count), names_to = "position", values_to = "count")
+
+# Plotting
+ggplot(data, aes(x = position, y = count, fill = position)) +
+  geom_bar(stat = "identity") +
+  labs(x = "Position relative to controls", y = "Count", fill = "Position") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+
+
+
+```
+
+```{r}
+# plotting proportions 
+
+
+# Calculating proportions
+data <- warm_season_matched_data_blocks %>%
+  arrange(uniqueID, Date) %>%
+  group_by(uniqueID) %>%
+  mutate(
+    case_position = case_control == "case",
+    control_position = case_control == "control"
+  ) %>%
+  filter(case_position | control_position) %>%
+  summarise(
+    before_count = sum(case_position & Date < min(Date[control_position])),
+    between_count = sum(case_position & Date > min(Date[control_position]) & Date < max(Date[control_position])),
+    after_count = sum(case_position & Date > max(Date[control_position])),
+    total_control = sum(control_position)  # Total number of control times
+  ) %>%
+  mutate(
+    before_prop = before_count / total_control,
+    between_prop = between_count / total_control,
+    after_prop = after_count / total_control
+  ) %>%
+  pivot_longer(cols = c(before_prop, between_prop, after_prop), names_to = "position", values_to = "proportion")
+
+# Plotting
+ggplot(data, aes(x = position, y = proportion, fill = position)) +
+  geom_bar(stat = "identity") +
+  labs(x = "Position relative to controls", y = "Proportion", fill = "Position") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+
+
+```
+
+
+```{r}
+# checking distribution of cold block data for short and long feb
+# 
+# cool_season_matched_deaths_short_feb = read.csv("~/Thesis Work/Thesis Files/cool_season_matched_data_blocks_short_feb.csv")
+# 
+# cool_season_matched_deaths_long_feb = read.csv("~/Thesis Work/Thesis Files/cool_season_matched_data_blocks_long_feb.csv")
+# 
+# 
+# head(cool_season_matched_deaths_short_feb)
+# # Data preparation
+# data <- cool_season_matched_deaths_short_feb %>%
+#   arrange(uniqueID, Date) %>%
+#   group_by(uniqueID) %>%
+#   mutate(
+#     case_position = case_control == "case",
+#     control_position = case_control == "control"
+#   ) %>%
+#   filter(case_position | control_position) %>%
+#   summarise(
+#     before_count = sum(case_position & Date < min(Date[control_position])),
+#     between_count = sum(case_position & Date > min(Date[control_position]) & Date < max(Date[control_position])),
+#     after_count = sum(case_position & Date > max(Date[control_position]))
+#   ) %>%
+#   pivot_longer(cols = c(before_count, between_count, after_count), names_to = "position", values_to = "count")
+# 
+# # Plotting
+# ggplot(data, aes(x = position, y = count, fill = position)) +
+#   geom_bar(stat = "identity") +
+#   labs(x = "Position relative to controls", y = "Count", fill = "Position") +
+#   theme_minimal() +
+#   theme(legend.position = "none")
+# 
+# data <- cool_season_matched_deaths_long_feb %>%
+#   arrange(uniqueID, Date) %>%
+#   group_by(uniqueID) %>%
+#   mutate(
+#     case_position = case_control == "case",
+#     control_position = case_control == "control"
+#   ) %>%
+#   filter(case_position | control_position) %>%
+#   summarise(
+#     before_count = sum(case_position & Date < min(Date[control_position])),
+#     between_count = sum(case_position & Date > min(Date[control_position]) & Date < max(Date[control_position])),
+#     after_count = sum(case_position & Date > max(Date[control_position]))
+#   ) %>%
+#   pivot_longer(cols = c(before_count, between_count, after_count), names_to = "position", values_to = "count")
+# 
+# # Plotting
+# ggplot(data, aes(x = position, y = count, fill = position)) +
+#   geom_bar(stat = "identity") +
+#   labs(x = "Position relative to controls", y = "Count", fill = "Position") +
+#   theme_minimal() +
+#   theme(legend.position = "none")
+
+```
+
+
+
+```{r}
+
+
+# Data preparation
+data <- warm_season_deaths_short_sept %>%
+  arrange(uniqueID, Date) %>%
+  group_by(uniqueID) %>%
+  mutate(
+    case_position = case_control == "case",
+    control_position = case_control == "control"
+  ) %>%
+  filter(case_position | control_position) %>%
+  summarise(
+    before_count = sum(case_position & Date < min(Date[control_position])),
+    between_count = sum(case_position & Date > min(Date[control_position]) & Date < max(Date[control_position])),
+    after_count = sum(case_position & Date > max(Date[control_position]))
+  ) %>%
+  pivot_longer(cols = c(before_count, between_count, after_count), names_to = "position", values_to = "count")
+
+# Plotting
+ggplot(data, aes(x = position, y = count, fill = position)) +
+  geom_bar(stat = "identity") +
+  labs(x = "Position relative to controls", y = "Count", fill = "Position") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+data <- warm_season_deaths_long_sept %>%
+  arrange(uniqueID, Date) %>%
+  group_by(uniqueID) %>%
+  mutate(
+    case_position = case_control == "case",
+    control_position = case_control == "control"
+  ) %>%
+  filter(case_position | control_position) %>%
+  summarise(
+    before_count = sum(case_position & Date < min(Date[control_position])),
+    between_count = sum(case_position & Date > min(Date[control_position]) & Date < max(Date[control_position])),
+    after_count = sum(case_position & Date > max(Date[control_position]))
+  ) %>%
+  pivot_longer(cols = c(before_count, between_count, after_count), names_to = "position", values_to = "count")
+
+# Plotting
+ggplot(data, aes(x = position, y = count, fill = position)) +
+  geom_bar(stat = "identity") +
+  labs(x = "Position relative to controls", y = "Count", fill = "Position") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+
+```{r}
+# visualizing when cocaine deaths happen
+names(death_data_all)
+
+# Filter data for deaths with "yes" in either cocaine or other stimi column
+death_data_filtered <- death_data_all %>%
+  filter(cocaine_contributing == "yes" | other_stimi_contributing == "yes")
+
+# death_data_filtered <- death_data_filtered %>%
+#   filter(opioid_contributing == "no")
+
+# Extract year from deathdate and create a new column
+death_data_filtered$year <- lubridate::year(death_data_filtered$deathdate)
+
+# Aggregate data by year and calculate the counts
+yearly_counts <- death_data_filtered %>%
+  group_by(year) %>%
+  summarise(count = n())
+
+# Plot yearly counts
+ggplot(yearly_counts, aes(x = year, y = count)) +
+  geom_bar(stat = "identity", fill = "skyblue", color = "black") +
+  labs(title = "Yearly Count of Deaths with Cocaine or Stimi",
+       x = "Year", y = "Count") +
+  theme_minimal()
+
+
+# Extract month from deathdate
+death_data_filtered$month <- month(death_data_filtered$deathdate, label = TRUE)
+
+# Plot
+ggplot(death_data_filtered, aes(x = month)) +
+  geom_bar(fill = "skyblue", color = "black") +
+  labs(title = "Distribution of Death Dates by Month with Cocaine or Other Stimulant Contribution",
+       x = "Month", y = "Frequency") +
+  theme_minimal()
+
+
+```
+
+
+```{r}
+# visualising frequency of opioid, cocaine, and other stimulant deaths in the dateset 
+
+# Count the frequency of "yes" and "no" in the opioid_contributing column
+opioid_freq <- table(death_data_all$opioid_contributing)
+
+# Convert the frequency table to a dataframe
+opioid_freq_df <- as.data.frame(opioid_freq)
+names(opioid_freq_df) <- c("Opioid_Contributing", "Frequency")
+
+# Plot the frequency of "yes" and "no"
+ggplot(opioid_freq_df, aes(x = Opioid_Contributing, y = Frequency)) +
+  geom_bar(stat = "identity", fill = "skyblue", color = "black") +
+  labs(title = "Frequency of Opioid Contribution in Deaths",
+       x = "Opioid Contributing",
+       y = "Frequency") +
+  theme_minimal()
+
+# Count the frequency of "yes" and "no" in the cocaine_contributing column
+cocaine_freq <- table(death_data_all$cocaine_contributing)
+
+# Convert the frequency table to a dataframe
+cocaine_freq_df <- as.data.frame(cocaine_freq)
+names(cocaine_freq_df) <- c("Cocaine_Contributing", "Frequency")
+
+# Plot the frequency of "yes" and "no"
+ggplot(cocaine_freq_df, aes(x = Cocaine_Contributing, y = Frequency)) +
+  geom_bar(stat = "identity", fill = "lightgreen", color = "black") +
+  labs(title = "Frequency of Cocaine Contribution in Deaths",
+       x = "Cocaine Contributing",
+       y = "Frequency") +
+  theme_minimal()
+
+# Count the frequency of "yes" and "no" in the other_stimi_contributing column
+other_stimi_freq <- table(death_data_all$other_stimi_contributing)
+
+# Convert the frequency table to a dataframe
+other_stimi_freq_df <- as.data.frame(other_stimi_freq)
+names(other_stimi_freq_df) <- c("Other_Stimuli_Contributing", "Frequency")
+
+# Plot the frequency of "yes" and "no"
+ggplot(other_stimi_freq_df, aes(x = Other_Stimuli_Contributing, y = Frequency)) +
+  geom_bar(stat = "identity", fill = "skyblue", color = "black") +
+  labs(title = "Frequency of Other Stimuli Contribution in Deaths",
+       x = "Other Stimuli Contributing",
+       y = "Frequency") +
+  theme_minimal()
+
+
+
+# Calculate frequencies for each combination of contributing factors
+only_opioid_freq <- nrow(subset(death_data_all, opioid_contributing == "yes" & cocaine_contributing == "no" & other_stimi_contributing == "no"))
+both_opioid_cocaine_freq <- nrow(subset(death_data_all, opioid_contributing == "yes" & cocaine_contributing == "yes"))
+both_opioid_other_stimi_freq <- nrow(subset(death_data_all, opioid_contributing == "yes" & other_stimi_contributing == "yes"))
+
+
+# Create a dataframe for plotting
+combined_df <- data.frame(Contributions = c("Only Opioid", "Both Opioid and Cocaine", "Both Opioid and Other Stimi"),
+                           Frequency = c(only_opioid_freq, both_opioid_cocaine_freq, both_opioid_other_stimi_freq))
+
+# Plot the frequencies of all three combinations
+ggplot(combined_df, aes(x = Contributions, y = Frequency)) +
+  geom_bar(stat = "identity", fill = "lightgreen", color = "black") +
+  labs(title = "Frequency of Different Combinations of Contributions in Deaths",
+       x = "Contributions",
+       y = "Frequency") +
+  theme_minimal()
+
+
+
+only_opioid_freq <- nrow(subset(death_data_all, opioid_contributing == "yes" & cocaine_contributing == "no" & other_stimi_contributing == "no"))
+only_cocaine_freq <- nrow(subset(death_data_all, opioid_contributing == "no" & cocaine_contributing == "yes" & other_stimi_contributing == "no"))
+only_other_stimi_freq <- nrow(subset(death_data_all, opioid_contributing == "no" & cocaine_contributing == "no" & other_stimi_contributing == "yes"))
+
+
+# Create a dataframe for plotting
+combined_df <- data.frame(Contributions = c("Only Opioid", "Only Cocaine", "Only Other Stimi"),
+                           Frequency = c(only_opioid_freq, only_cocaine_freq, only_other_stimi_freq))
+
+# Plot the frequencies of all three combinations
+ggplot(combined_df, aes(x = Contributions, y = Frequency)) +
+  geom_bar(stat = "identity", fill = "lightgreen", color = "black") +
+  labs(title = "Frequency of Different Combinations of Contributions in Deaths",
+       x = "Contributions",
+       y = "Frequency") +
+  theme_minimal()
+
+
+# Calculate the frequency of deaths with "yes" in two or more contributing factors per year
+death_data_all <- death_data_all %>%
+  mutate(multiple_contributing = ifelse(opioid_contributing == "yes" & 
+                                          (cocaine_contributing == "yes" | other_stimi_contributing == "yes") |
+                                        cocaine_contributing == "yes" & 
+                                          (opioid_contributing == "yes" | other_stimi_contributing == "yes") |
+                                        other_stimi_contributing == "yes" & 
+                                          (opioid_contributing == "yes" | cocaine_contributing == "yes"), "yes", "no")) %>%
+  group_by(year) %>%
+  summarize(deaths_with_multiple_contributing = sum(multiple_contributing == "yes"))
+
+# Plot the frequency of deaths with "yes" in two or more contributing factors by year
+ggplot(death_data_all, aes(x = year, y = deaths_with_multiple_contributing)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Year", y = "Frequency of Deaths", title = "Frequency of Polysubstance Deaths") +
+  theme_minimal()
+
+
+
+
+
+```
+```{r}
+# visualizations of death over time
+
+names(death_data_all)
+
+
+
+```
+
+
+```{r}
+# this needs to be rate not count
+
+names(data_aggregate)
+dim(death_data_all)
+
+death_data_all$Date <- as.Date(death_data_all$Date)
+
+# Extract year and month from Date column
+data_aggregate$YearMonth <- format(data_aggregate$Date, "%Y-%m")
+
+# Aggregate data to count number of deaths per month
+death_counts <- data_aggregate %>%
+  group_by(YearMonth) %>%
+  summarize(Deaths = n())
+
+# Convert YearMonth back to Date format
+death_counts$YearMonth <- as.Date(paste(death_counts$YearMonth, "-01", sep = ""), format = "%Y-%m-%d")
+
+# Plot line graph
+ggplot(death_counts, aes(x = YearMonth, y = Deaths)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Number of Deaths", title = "Number of Deaths Over Time") +
+  theme_minimal()
+
+
+
+# Convert Date column to date format
+death_data_all$Date <- as.Date(death_data_all$Date)
+
+# Extract year from Date column
+death_data_all$Year <- format(death_data_all$Date, "%Y")
+
+# Aggregate data to count number of deaths per year
+death_counts <- death_data_all %>%
+  group_by(Year) %>%
+  filter(opioid_contributing == "yes") %>%
+  summarize(Deaths = n())
+
+# Plot line graph
+ggplot(death_counts, aes(x = Year, y = Deaths)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Year", y = "Number of Deaths", title = "Number of Deaths Over Time by Year") +
+  theme_minimal()
+
+
+
+library(dplyr)
+
+# Step 1: Aggregate opioid-contributing deaths per year
+opioid_deaths <- death_data_all %>%
+#  filter(opioid_contributing == "yes") %>%
+  group_by(year) %>%
+  summarize(Opioid_Deaths = n())
+
+# Convert Date column in data_aggregate to year
+data_aggregate$year <- as.integer(format(data_aggregate$Date, "%Y"))
+
+# Step 2: Merge opioid deaths with data_aggregate
+data_aggregate <- data_aggregate %>%
+  left_join(opioid_deaths, by = c("year" = "year"))
+
+# Step 3: Calculate death rate per year
+data_aggregate <- data_aggregate %>%
+  mutate(Death_Rate = Opioid_Deaths / (Population / 100000)) # Death rate per 100,000 population
+
+# Step 4: Plot the death rate over time
+ggplot(data_aggregate, aes(x = Date, y = Death_Rate)) +
+  geom_line() +
+  geom_col() +
+  labs(x = "Year", y = "Opioid-Related Death Rate (per 100,000 population)", title = "Opioid-Related Death Rate Over Time") +
+  theme_minimal()
+
+head(death_data_all, 100)
+names(death_data_all)
+
+
+```
+
+
+```{r}
+
+library(dplyr)
+library(ggplot2)
+
+# pop_data = read.csv("~/Thesis Work/Thesis Files/NCprojectionsbyage2022.csv")
+# 
+# pop_data_summary <- pop_data %>%
+#   filter(year < 2022) %>%
+#   group_by(year) %>%
+#   summarise(total_population = sum(total, na.rm = TRUE))
+# 
+# # Plot the total population by year
+# ggplot(pop_data_summary, aes(x = year, y = total_population)) +
+#   geom_line() +  # Use geom_col() for bar plot
+#   labs(
+#     y = "Total Population",
+#     x = "Year"
+#   ) +
+#   theme_minimal()  # Optional: Use a minimal theme for the plot
+
+
+# Subset data for opioid_contributing == yes and cocaine_contributing == no and other_stimi_contributing == no
+line1_data <- death_data_all %>%
+  filter(opioid_contributing == "yes" & cocaine_contributing == "no" & other_stimi_contributing == "no") %>%
+  group_by(year) %>%
+  summarise(death_count = n())
+
+# Subset data for opioid_contributing == yes and (cocaine_contributing == yes or other_stimi_contributing == yes)
+line2_data <- death_data_all %>%
+  filter(opioid_contributing == "yes" & (cocaine_contributing == "yes" | other_stimi_contributing == "yes")) %>%
+  group_by(year) %>%
+  summarise(death_count = n())
+
+# Subset data for opioid_contributing == no and (cocaine_contributing == yes or other_stimi_contributing == yes)
+line3_data <- death_data_all %>%
+  filter(opioid_contributing == "no" & (cocaine_contributing == "yes" | other_stimi_contributing == "yes")) %>%
+  group_by(year) %>%
+  summarise(death_count = n())
+
+# Plotting
+ggplot() +
+  geom_line(data = line1_data, aes(x = year, y = death_count, color = "Opioid and No Cocaine/Stimulant"), size = 1.5) +
+  geom_line(data = line2_data, aes(x = year, y = death_count, color = "Opioid and Cocaine/Stimulant"), size = 1.5) +
+  geom_line(data = line3_data, aes(x = year, y = death_count, color = "Cocaine/Stimulant and No Opioid"), size = 1.5) +
+  labs(x = "Year", y = "Number of Deaths", color = "Legend") +
+  scale_color_manual(values = c("Opioid and No Cocaine/Stimulant" = "cornflowerblue", "Opioid and Cocaine/Stimulant" = "deepskyblue", "Cocaine/Stimulant and No Opioid" = "darkorange")) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+ggplot() +
+  geom_line(data = line1_data, aes(x = year, y = death_count, color = "Opioid and No Cocaine/Stimulant"), size = 1.5) +
+  geom_line(data = line2_data, aes(x = year, y = death_count, color = "Opioid and Cocaine/Stimulant"), size = 1.5) +
+  geom_line(data = line3_data, aes(x = year, y = death_count, color = "Cocaine/Stimulant and No Opioid"), size = 1.5) +
+  labs(x = "Year", y = "Number of Deaths", color = "Legend") +
+  scale_color_manual(values = c("Opioid and No Cocaine/Stimulant" = "cornflowerblue", "Opioid and Cocaine/Stimulant" = "skyblue", "Cocaine/Stimulant and No Opioid" = "darkorange"), name = "Legend") +
+  theme_minimal() +
+  theme(text=element_text(family="Times New Roman"))
+
+ggplot() +
+  geom_area(data = line1_data, aes(x = year, y = death_count, fill = "Opioid and No Cocaine/Stimulant"), color = NA, alpha = 0.5) +
+  geom_area(data = line3_data, aes(x = year, y = death_count, fill = "Cocaine/Stimulant and No Opioid"), color = NA, alpha = 0.7) +
+  geom_area(data = line2_data, aes(x = year, y = death_count, fill = "Opioid and Cocaine/Stimulant"), color = NA, alpha = 0.6) +
+  labs(x = "Year", y = "Number of Deaths", fill = "Legend") +
+  scale_fill_manual(values = c("Opioid and No Cocaine/Stimulant" = "deepskyblue", "Opioid and Cocaine/Stimulant" = "navyblue", "Cocaine/Stimulant and No Opioid" = "darkorange"), name = "Legend") +
+  scale_y_log10() +
+  theme_minimal() +
+  theme(text = element_text(family = "Times New Roman"),
+        legend.position = "bottom",  # Place legend at the bottom
+    legend.direction = "horizontal")
+
+
+
+# panel.grid.major = element_blank(), panel.grid.minor = element_blank()
+
+# Assuming you have already created the plot
+# plot <- ggplot() +
+#   geom_line(data = line1_data, aes(x = year, y = death_count, color = "Opioid and No Cocaine/Stimulant")) +
+#   geom_line(data = line2_data, aes(x = year, y = death_count, color = "Opioid and Cocaine/Stimulant")) +
+#   geom_line(data = line3_data, aes(x = year, y = death_count, color = "Cocaine/Stimulant and No Opioid")) +
+#   labs(x = "Year", y = "Number of Deaths", color = "Legend") +
+#   scale_color_manual(values = c("Opioid and No Cocaine/Stimulant" = "cornflowerblue", "Opioid and Cocaine/Stimulant" = "deepskyblue", "Cocaine/Stimulant and No Opioid" = "darkorange")) +
+#   theme_minimal() +
+#   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+# 
+# # Save the plot as a PDF
+# ggsave("~/Thesis Work/Thesis Files/pdfs/substance_deaths_chart.pdf", plot)
+
+
+
+```
+
+```{r}
+## death counts on map
+
+library(tigris)
+library(viridis)
+
+NC_county_sf = tigris::counties(state = "North Carolina", cb = TRUE)
+names(death_data_all)
+
+death_count_county_20002022 = death_data_all %>%
+  group_by(GEOID) %>%
+  summarise(death_count = n())
+
+death_data_filtered <- death_data_all %>%
+  filter(year < 2011)
+
+# Group by GEOID and calculate death count
+death_count_county_20002010 <- death_data_filtered %>%
+  group_by(GEOID) %>%
+  summarise(death_count = n())
+
+death_data_filtered <- death_data_all %>%
+  filter(year >= 2013 & year <= 2022)
+
+# Group by GEOID and calculate death count
+death_count_county_20132022 <- death_data_filtered %>%
+  group_by(GEOID) %>%
+  summarise(death_count = n())
+
+merged_data <- merge(NC_county_sf, death_count_county_20002022, by="GEOID", all.x = TRUE)
+
+common_limits <- range(c(death_count_county_20002010$death_count,
+                          death_count_county_20132022$death_count))
+
+# Set the limits for the color scale for 2000-2021
+limits_20002022 <- range(death_count_county_20002022$death_count)
+
+# Plot for 2000-2021 with custom color scale
+ggplot() +
+  geom_sf(data = merged_data, aes(fill = death_count)) +
+  scale_fill_gradient(name = "Death Counts", limits = limits_20002022, low = "white", high = "blue") +
+  labs(title = "Death Counts 2000-2022") +
+  theme_minimal()
+
+
+merged_data <- merge(NC_county_sf, death_count_county_20002010, by="GEOID", all.x = TRUE)
+
+ggplot() +
+  geom_sf(data = merged_data, aes(fill = death_count)) +
+  scale_fill_gradient(name = "Death Rates", limits = common_limits, low = "white", high = "blue") +
+  labs(title = "Death Counts 2000-2010") +
+  theme_minimal()
+
+merged_data <- merge(NC_county_sf, death_count_county_20132022, by="GEOID", all.x = TRUE)
+
+
+# Plot for 2013-2021 with custom color scale
+ggplot() +
+  geom_sf(data = merged_data, aes(fill = death_count)) +
+  scale_fill_gradient(name = "Death Counts", limits = common_limits, low = "white", high = "blue") +
+  labs(title = "Death Counts 2013-2022") +
+  theme_minimal()
+
+```
+
+```{r}
+### death rates
+library(patchwork)
+
+pop_data = read.csv("~/Thesis Work/Thesis Files/NCprojectionsbyage2022.csv")
+
+pop_data_subset <- pop_data[, c("fips", "total", "year")]
+
+death_data_all_grouped = death_data_all %>%
+  group_by(GEOID, year) %>%
+  summarise(death_count = n())
+
+death_data_all_grouped <- merge(death_data_all_grouped, pop_data_subset, by.x = c("GEOID", "year"), by.y = c("fips", "year"), all.x = TRUE)
+
+death_data_all_grouped = na.omit(death_data_all_grouped)
+
+death_data_all_grouped$death_rate <- death_data_all_grouped$death_count / death_data_all_grouped$total
+
+# death rate per 100,000 people 
+
+death_data_all_grouped$death_rate_per_100k <- death_data_all_grouped$death_rate * 100000
+
+death_rate_county_20002021 = death_data_all_grouped %>%
+  group_by(GEOID) %>%
+  summarise(death_rate = mean(death_rate_per_100k))
+
+death_data_filtered <- death_data_all_grouped %>%
+  filter(year < 2010)
+
+# Group by GEOID and calculate death count
+death_rate_county_20002009 <- death_data_filtered %>%
+  group_by(GEOID) %>%
+  summarise(death_rate = mean(death_rate_per_100k))
+
+death_data_filtered <- death_data_all_grouped %>%
+  filter(year >= 2010 & year <= 2013)
+
+# Group by GEOID and calculate death count
+death_rate_county_20102013 <- death_data_filtered %>%
+  group_by(GEOID) %>%
+  summarise(death_rate = mean(death_rate_per_100k))
+
+death_data_filtered <- death_data_all_grouped %>%
+  filter(year >= 2014 & year <= 2021)
+
+# Group by GEOID and calculate death count
+death_rate_county_20142021 <- death_data_filtered %>%
+  group_by(GEOID) %>%
+  summarise(death_rate = mean(death_rate_per_100k))
+
+merged_data <- merge(NC_county_sf, death_rate_county_20002021, by="GEOID", all.x = TRUE)
+
+common_limits <- range(c(death_rate_county_20002009$death_rate,
+                          death_rate_county_20142021$death_rate))
+
+# Set the limits for the color scale for 2000-2021
+limits_20002021 <- range(death_rate_county_20002021$death_rate)
+
+# Plot for 2000-2021 with custom color scale
+plot1 = ggplot() +
+  geom_sf(data = merged_data, aes(fill = death_rate)) +
+  scale_fill_gradient(name = "Deaths Per 100,000 people Per Year", limits = common_limits, low = "white", high = "blue") +
+  labs(title = "Overall (2000-2022)") +
+  theme_minimal() +
+  theme(axis.text = element_blank(), 
+        axis.title = element_blank(),
+        panel.grid = element_blank(),
+        plot.title = element_text(family = "Times New Roman", hjust = 0.5))
+
+merged_data <- merge(NC_county_sf, death_rate_county_20002009, by="GEOID", all.x = TRUE)
+
+plot2 = ggplot() +
+  geom_sf(data = merged_data, aes(fill = death_rate)) +
+  scale_fill_gradient(name = "Deaths Per 100,000 people Per Year", limits = common_limits, low = "white", high = "blue") +
+  labs(title = "Wave 1 (2000-2009)") +
+  theme_minimal() +
+  theme(axis.text = element_blank(), 
+        axis.title = element_blank(),
+        panel.grid = element_blank(),
+        plot.title = element_text(family = "Times New Roman", hjust = 0.5))
+
+merged_data <- merge(NC_county_sf, death_rate_county_20102013, by="GEOID", all.x = TRUE)
+
+# Plot for 2013-2021 with custom color scale
+plot3 = ggplot() +
+  geom_sf(data = merged_data, aes(fill = death_rate)) +
+  scale_fill_gradient(name = "Deaths Per 100,000 people Per Year", limits = common_limits, low = "white", high = "blue") +
+  labs(title = "Wave 2 (2010-2013)") +
+  theme_minimal() +
+  theme(axis.text = element_blank(), 
+        axis.title = element_blank(),
+        panel.grid = element_blank(),
+        plot.title = element_text(family = "Times New Roman", hjust = 0.5))
+
+merged_data <- merge(NC_county_sf, death_rate_county_20142021, by="GEOID", all.x = TRUE)
+
+# Plot for 2013-2021 with custom color scale
+plot4 = ggplot() +
+  geom_sf(data = merged_data, aes(fill = death_rate)) +
+  scale_fill_gradient(name = "Deaths Per 100,000 people Per Year", limits = common_limits, low = "white", high = "blue") +
+  labs(title = "Wave 3 (2014-2021)") +
+  theme_minimal() +
+  theme(axis.text = element_blank(), 
+        axis.title = element_blank(),
+        panel.grid = element_blank(),
+        plot.title = element_text(family = "Times New Roman", hjust = 0.5),
+         legend.position = "bottom",  # Place legend at the bottom
+        legend.direction = "horizontal")
+
+# combined_plot <- (plot1 + plot2 ) /
+#   ( plot3 + plot4) +
+#   plot_layout(guides = 'collect')
+
+combined_plot <- (plot2 + plot3 + plot4 ) +
+  plot_layout(guides = 'collect')
+
+plot2
+
+combined_plot
+
+```
+
+```{r}
+### death rates but for just the two waves
+library(patchwork)
+
+NC_county_sf = tigris::counties(state = "North Carolina", cb = TRUE)
+
+
+pop_data = read.csv("~/Thesis Work/Thesis Files/NCprojectionsbyage2022.csv")
+
+pop_data_subset <- pop_data[, c("fips", "total", "year")]
+
+death_data_all_grouped = death_data_all %>%
+  group_by(GEOID, year) %>%
+  summarise(death_count = n())
+
+death_data_all_grouped <- merge(death_data_all_grouped, pop_data_subset, by.x = c("GEOID", "year"), by.y = c("fips", "year"), all.x = TRUE)
+
+death_data_all_grouped = na.omit(death_data_all_grouped)
+
+death_data_all_grouped$death_rate <- death_data_all_grouped$death_count / death_data_all_grouped$total
+
+# death rate per 100,000 people 
+
+death_data_all_grouped$death_rate_per_100k <- death_data_all_grouped$death_rate * 100000
+
+death_rate_county_20002022 = death_data_all_grouped %>%
+  group_by(GEOID) %>%
+  summarise(death_rate = mean(death_rate_per_100k))
+
+death_data_filtered <- death_data_all_grouped %>%
+  filter(year < 2012)
+
+# Group by GEOID and calculate death count
+death_rate_county_20002011 <- death_data_filtered %>%
+  group_by(GEOID) %>%
+  summarise(death_rate = mean(death_rate_per_100k))
+
+death_data_filtered <- death_data_all_grouped %>%
+  filter(year >= 2012 & year <= 2022)
+
+# Group by GEOID and calculate death count
+death_rate_county_20122022 <- death_data_filtered %>%
+  group_by(GEOID) %>%
+  summarise(death_rate = mean(death_rate_per_100k))
+
+merged_data <- merge(NC_county_sf, death_rate_county_20002022, by="GEOID", all.x = TRUE)
+
+common_limits <- range(c(death_rate_county_20002011$death_rate,
+                          death_rate_county_20122022$death_rate))
+
+# Set the limits for the color scale for 2000-2021
+limits_20002022 <- range(death_rate_county_20002022$death_rate)
+
+# Plot for 2000-2021 with custom color scale
+plot1 = ggplot() +
+  geom_sf(data = merged_data, aes(fill = death_rate), color = "white") +
+  scale_fill_gradient(name = "Deaths Per 100,000 people Per Year", limits = common_limits, low = "white", high = "blue") +
+  labs(title = "Overall (2000-2022)") +
+  theme_minimal() +
+  theme(axis.text = element_blank(), 
+        axis.title = element_blank(),
+        panel.grid = element_blank(),
+        plot.title = element_text(family = "Times New Roman", hjust = 0.5))
+
+merged_data <- merge(NC_county_sf, death_rate_county_20002011, by="GEOID", all.x = TRUE)
+
+plot2 = ggplot() +
+  geom_sf(data = merged_data, aes(fill = death_rate), color = "white") +
+  scale_fill_gradient(name = "Deaths Per 100,000 people Per Year", limits = common_limits, low = "white", high = "blue") +
+  labs(title = "Wave 1 (2000-2011)") +
+  theme_minimal() +
+  theme(axis.text = element_blank(), 
+        axis.title = element_blank(),
+        panel.grid = element_blank(),
+        plot.title = element_text(family = "Times New Roman", hjust = 0.5))
+
+
+merged_data <- merge(NC_county_sf, death_rate_county_20122022, by="GEOID", all.x = TRUE)
+
+# Plot for 2013-2021 with custom color scale
+plot4 = ggplot() +
+  geom_sf(data = merged_data, aes(fill = death_rate), color = "white") +
+  scale_fill_gradient(name = "Deaths (per 100,000\n per year)", limits = common_limits, low = "white", high = "blue") +
+  labs(title = "Wave 2 (2012-2022)") +
+  theme_minimal() +
+  theme(axis.text = element_blank(), 
+        axis.title = element_blank(),
+        panel.grid = element_blank(),
+        plot.title = element_text(family = "Times New Roman", hjust = 0.5))
+
+# combined_plot <- (plot1 + plot2 ) /
+#   ( plot3 + plot4) +
+#   plot_layout(guides = 'collect')
+
+plot1
+
+combined_plot <- (plot2 + plot4 ) +
+  plot_layout(guides = 'collect')
+
+combined_plot
+
+# not working
+# ggsave("~/Thesis Work/Thesis Files/pdfs/nc_death_rates.pdf", combined_plot)
+
+
+
+```
+
+
+```{r}
+## Average MaxTemp over NC during warm season
+
+max_temperature_data_long
+
+library(dplyr)
+
+NC_county_sf = tigris::counties(state = "North Carolina", cb = TRUE)
+NC_tract_sf = tigris::tracts(state = "North Carolina", cb = TRUE)
+
+
+
+mean_warm_plot <- max_temperature_tract %>%
+  mutate(Date = as.Date(Date)) %>%
+  filter(month(Date) >= 5 & month(Date) <= 9) %>%
+  group_by(GEOID) %>%
+  summarize(MaxTemperature = mean(Temperature, na.rm = TRUE))
+
+merged_data <- merge(NC_tract_sf, mean_warm_plot, by="GEOID", all.x = TRUE)
+
+plot1 = ggplot() +
+  geom_sf(data = merged_data, aes(fill = MaxTemperature),  color = "white", size = 0.1) +
+  scale_fill_gradient(name = "Max Temperature (C)", low = "purple", high = "orange") +
+  labs(title = "Mean Warm-Season Max Temperature (2000-2022)") +
+  theme_minimal() +
+  theme(axis.text = element_blank(), 
+        axis.title = element_blank(),
+        panel.grid = element_blank(),
+        plot.title = element_text(family = "Times New Roman", hjust = 0.5))
+
+
+mean_cool_plot <- min_temperature_tract %>%
+  mutate(Date = as.Date(Date)) %>%
+  filter(month(Date) == c(12, 1, 2, 3)) %>%
+  group_by(GEOID) %>%
+  summarize(MinTemperature = mean(Temperature, na.rm = TRUE))
+
+merged_data <- merge(NC_tract_sf, mean_cool_plot, by="GEOID", all.x = TRUE)
+
+plot1 = ggplot() +
+  geom_sf(data = merged_data, aes(fill = MinTemperature),  color = "white", size = 0.1) +
+  scale_fill_gradient(name = "Min Temperature (C)", low = "blue", high = "yellow") +
+  labs(title = "Mean Cool-Season Min Temperature (2000-2022)") +
+  theme_minimal() +
+  theme(axis.text = element_blank(), 
+        axis.title = element_blank(),
+        panel.grid = element_blank(),
+        plot.title = element_text(family = "Times New Roman", hjust = 0.5))
+
+
+mean_warm_plot <- max_temperature_data_long %>%
+  mutate(Date = as.Date(Date)) %>%
+  filter(month(Date) >= 5 & month(Date) <= 9) %>%
+  group_by(GEOID) %>%
+  summarize(MaxTemperature = mean(MaxTemperature, na.rm = TRUE))
+
+merged_data <- merge(NC_county_sf, mean_warm_plot, by="GEOID", all.x = TRUE)
+
+
+plot1 = ggplot() +
+  geom_sf(data = merged_data, aes(fill = MaxTemperature),  color = NA) +
+  scale_fill_gradient(name = "Max Temperature (C)", low = "yellow", high = "red") +
+  labs(title = "Mean Warm-Season Max Temperature (2000-2022)") +
+  theme_minimal() +
+  theme(axis.text = element_blank(), 
+        axis.title = element_blank(),
+        panel.grid = element_blank(),
+        plot.title = element_text(family = "Times New Roman", hjust = 0.5))
+
+
+
+mean_cool_plot <- min_temperature_data_long %>%
+  mutate(Date = as.Date(Date)) %>%
+  filter(month(Date) == c(12, 1, 2, 3)) %>%
+  group_by(GEOID) %>%
+  summarize(MinTemperature = mean(MinTemperature, na.rm = TRUE))
+
+merged_data <- merge(NC_county_sf, mean_cool_plot, by="GEOID", all.x = TRUE)
+
+
+plot1 = ggplot() +
+  geom_sf(data = merged_data, aes(fill = MinTemperature)) +
+  scale_fill_gradient(name = "Min Temperature (C)", low = "blue", high = "yellow") +
+  labs(title = "Mean Cool-Season Min Temperature (2000-2022)") +
+  theme_minimal() +
+  theme(axis.text = element_blank(), 
+        axis.title = element_blank(),
+        panel.grid = element_blank(),
+        plot.title = element_text(family = "Times New Roman", hjust = 0.5))
+
+```
+
+
+```{r}
+
+# plots by demographics 
+death_data_all
+
+library(ggplot2)
+library(dplyr)
+
+# Assuming your dataframe is named death_data_all and it contains a column named "year" representing the year of death
+
+# Aggregate the data to get the total number of deaths per year for each race
+death_data_aggregated <- death_data_all %>%
+  group_by(year, simple_race) %>%
+  summarise(TotalDeaths = n())
+
+# Create a color palette for each race
+race_colors <- c("White Non-Hispanic" = "skyblue", "Black Non-Hispanic" = "orange4", "Asian Non-Hispanic" = "blue", "Native American Non-Hispanic" = "darkorange", "Any Race - Hispanic" = "darkgoldenrod2", "Other" = "cyan")
+
+ggplot(death_data_aggregated, aes(x = year, y = TotalDeaths, fill = simple_race)) +
+  geom_ribbon(aes(ymin = 0, ymax = TotalDeaths), color = NA, alpha =.4) +  # Add shaded area under the lines
+  scale_fill_manual(values = race_colors) +  # Assign colors to each race
+  labs(title = "Total Deaths per Year by Race (2000-2022)",
+       x = "Year",
+       y = "Total Deaths",
+       fill = "Race") +  # Adjust the legend title
+  theme_minimal() +
+  scale_y_log10() +
+  theme(plot.title = element_text(family = "Times New Roman", hjust = 0.5),
+        panel.grid = element_blank())  # Remove gridlines
+
+
+
+# Create a color palette for each race
+race_colors <- c("White Non-Hispanic" = "skyblue", 
+                 "Black Non-Hispanic" = "darkorange", 
+                  "Any Race - Hispanic" = "yellow2", 
+                 "Native American Non-Hispanic" = "royalblue1", 
+                  "Asian Non-Hispanic" = "lightcyan", 
+                 "Other" = "blue")
+
+# Manually specify the order of races
+race_order <- c("White Non-Hispanic", 
+                "Black Non-Hispanic", 
+                "Native American Non-Hispanic", 
+                "Any Race - Hispanic", 
+                "Other",
+                "Asian Non-Hispanic")
+
+# Reorder the factor levels of simple_race according to the specified order
+death_data_aggregated$simple_race <- factor(death_data_aggregated$simple_race, levels = race_order)
+
+# Plot the data
+ggplot(death_data_aggregated, aes(x = year, y = TotalDeaths, fill = simple_race)) +
+  geom_ribbon(aes(ymin = 0, ymax = TotalDeaths), color = NA, alpha = 0.7) +
+  scale_fill_manual(values = race_colors) +
+  labs(title = "Total Deaths per Year by Race (2000-2022)",
+       x = "Year",
+       y = "Total Deaths",
+       fill = "Race") +
+  theme_minimal() +
+  scale_y_log10() +
+  theme(plot.title = element_text(family = "Times New Roman", hjust = 0.5),
+        panel.grid = element_blank())
+
+
+
+
+# 
+# # Create the line plot for all races
+# plot1 <- ggplot(death_data_aggregated, aes(x = year, y = TotalDeaths, color = simple_race)) +
+#   geom_line(size = .5) +  # Adjust line thickness
+#   scale_color_manual(values = race_colors) +  # Assign colors to each race
+#   labs(title = "Total Deaths per Year by Race (2000-2022)",
+#        x = "Year",
+#        y = "Total Deaths",
+#        color = "Race") +
+#   theme_minimal() +
+#   scale_y_log10() +
+#   theme(plot.title = element_text(family = "Times New Roman", hjust = 0.5),
+#         panel.grid = element_blank())  # Remove gridlines
+# # Display the plot for all races
+# print(plot1)
+# 
+# # Filter out White Non-Hispanic and create the line plot for remaining races
+# death_data_aggregated_filtered <- death_data_aggregated %>%
+#   filter(simple_race != "White Non-Hispanic")
+# 
+# # Create the line plot for remaining races
+# plot2 <- ggplot(death_data_aggregated_filtered, aes(x = year, y = TotalDeaths, color = simple_race)) +
+#   geom_line(size = 1) +  # Adjust line thickness
+#   scale_color_manual(values = race_colors) +  # Assign colors to each race
+#   labs(title = "Deaths by Race Excluding White Non-Hispanic (2000-2022)",
+#        x = "Year",
+#        y = "Total Deaths") +
+#   theme_minimal() +
+#   scale_y_log10() +
+#   theme(plot.title = element_text(family = "Times New Roman", hjust = 0.5),
+#         panel.grid = element_blank())  # Remove gridlines
+# 
+# # Display the plot for remaining races
+# print(plot2)
+
+
+```
+
+```{r}
+
+# plots by age 
+death_data_all
+
+library(ggplot2)
+library(dplyr)
+
+
+# Assuming your dataframe is named death_data_all and it contains a column named "year" representing the year of death
+
+# Aggregate the data to get the total number of deaths per year for each race
+death_data_aggregated <- death_data_all %>%
+  group_by(year, simple_age) %>%
+  summarise(TotalDeaths = n())
+
+# Create a color palette for each race
+age_colors <- c("0-17" = "blue", "18-24" = "cornflowerblue", "25-34" = "cyan", "35-44" = "darkorange", "45-54" = "darkgoldenrod2", "55+" = "skyblue")
+
+# Create the line plot for all races
+ggplot(death_data_aggregated, aes(x = year, y = TotalDeaths, color = simple_age)) +
+  geom_line(size = 1) +  # Adjust line thickness
+  scale_color_manual(values = age_colors) +  # Assign colors to each race
+  labs(title = "Deaths by Age (2000-2022)",
+       x = "Year",
+       y = "Total Deaths") +
+  theme_minimal() +
+  theme(plot.title = element_text(family = "Times New Roman", hjust = 0.5),
+        panel.grid = element_blank())  # Remove gridlines
+
+# Display the plot for all races
+print(plot1)
+
+
+
+# Define the color palette for each age group
+age_colors <- c("0-17" = "blue", "18-24" = "cornflowerblue", "25-34" = "darkorange", 
+                "35-44" = "darkorange3", "45-54" = "yellow2", "55+" = "skyblue")
+
+# Manually specify the order of age groups
+age_order <- c( "35-44", "25-34", "45-54", "55+", "18-24", "0-17")
+
+# Reorder the factor levels of simple_age according to the specified order
+death_data_aggregated$simple_age <- factor(death_data_aggregated$simple_age, levels = age_order)
+
+# Plot the data using geom_ribbon
+ggplot(death_data_aggregated, aes(x = year, y = TotalDeaths, fill = simple_age)) +
+  geom_ribbon(aes(ymin = 0, ymax = TotalDeaths), color = NA, alpha = 0.7) +
+  scale_fill_manual(values = age_colors, breaks = (names(age_colors))) +
+  labs(title = "Deaths by Age (2000-2022)",
+       x = "Year",
+       y = "Total Deaths",
+       fill = "Age Group") +  # Adjust the legend title
+  theme_minimal() +
+  theme(plot.title = element_text(family = "Times New Roman", hjust = 0.5),
+        panel.grid = element_blank())  # Remove gridlines
+
+
+```
+
+
+```{r}
+# plots by age 
+death_data_all
+
+library(ggplot2)
+library(dplyr)
+
+# Assuming your dataframe is named death_data_all and it contains a column named "year" representing the year of death
+
+# Aggregate the data to get the total number of deaths per year for each race
+death_data_aggregated <- death_data_all %>%
+  group_by(year, SVI_tertile) %>%
+  summarise(TotalDeaths = n())
+
+# Create a color palette for each race
+age_colors <- c("Low" = "blue", "Medium" = "orange", "High" = "skyblue")
+
+# Create the line plot for all races
+plot1 <- ggplot(death_data_aggregated, aes(x = year, y = TotalDeaths, color = SVI_tertile)) +
+  geom_line(size = 1) +  # Adjust line thickness
+  scale_color_manual(values = age_colors) +  # Assign colors to each race
+  labs(title = "Deaths by SVI Tertile (2000-2022)",
+       x = "Year",
+       y = "Total Deaths") +
+  theme_minimal() +
+  theme(plot.title = element_text(family = "Times New Roman", hjust = 0.5),
+        panel.grid = element_blank())  # Remove gridlines
+
+# Display the plot for all races
+print(plot1)
+
+# Define the color palette for each SVI tertile
+svi_colors <- c("Low" = "deepskyblue", "Medium" = "darkorange", "High" = "blue")
+
+# Manually specify the order of SVI tertiles for plotting
+svi_order <- c("Low", "Medium", "High")
+
+# Reorder the factor levels of SVI_tertile according to the specified order
+death_data_aggregated$SVI_tertile <- factor(death_data_aggregated$SVI_tertile, levels = svi_order)
+
+# Plot the data
+ggplot(death_data_aggregated, aes(x = year, ymin = 0, ymax = TotalDeaths, fill = SVI_tertile, order = SVI_tertile)) +
+  geom_ribbon(color = NA, alpha = 0.8) +  # Add shaded area under the lines
+  scale_fill_manual(values = svi_colors) +  # Assign colors to each SVI tertile
+  labs(title = "Deaths by SVI Tertile (2000-2022)",
+       x = "Year",
+       y = "Total Deaths",
+       fill = "SVI Tertile") +  # Adjust the legend title
+  theme_minimal() +
+  scale_y_log10() +
+  theme(plot.title = element_text(family = "Times New Roman", hjust = 0.5),
+        panel.grid = element_blank())  # Remove gridlines
+
+# Display the plot
+
+
+```
+
+```{r}
+# plots by sex 
+death_data_all
+
+library(ggplot2)
+library(dplyr)
+
+# Assuming your dataframe is named death_data_all and it contains a column named "year" representing the year of death
+
+# Aggregate the data to get the total number of deaths per year for each race
+death_data_aggregated <- death_data_all %>%
+  group_by(year, sex) %>%
+  summarise(TotalDeaths = n())
+
+# Create a color palette for each race
+age_colors <- c("M" = "blue", "F" = "orange")
+
+# Create the line plot for all races
+plot1 <- ggplot(death_data_aggregated, aes(x = year, y = TotalDeaths, color = sex)) +
+  geom_line(size = 1) +  # Adjust line thickness
+  scale_color_manual(values = age_colors) +  # Assign colors to each race
+  labs(title = "Deaths by Sex (2000-2022)",
+       x = "Year",
+       y = "Total Deaths") +
+  theme_minimal() +
+  theme(plot.title = element_text(family = "Times New Roman", hjust = 0.5),
+        panel.grid = element_blank())  # Remove gridlines
+
+# Display the plot for all races
+print(plot1)
+
+
+# Define the color palette for each sex
+sex_colors <- c("M" = "deepskyblue", "F" = "darkorange")
+
+# Manually specify the order of sexes for plotting
+sex_order <- c("M", "F")
+
+# Reorder the factor levels of sex according to the specified order
+death_data_aggregated$sex <- factor(death_data_aggregated$sex, levels = sex_order)
+
+# Plot the data
+ggplot(death_data_aggregated, aes(x = year, ymin = 0, ymax = TotalDeaths, fill = sex, order = sex)) +
+  geom_ribbon(color = NA, alpha = 1) +  # Add shaded area under the lines
+  scale_fill_manual(values = sex_colors) +  # Assign colors to each sex
+  labs(title = "Deaths by Sex (2000-2022)",
+       x = "Year",
+       y = "Total Deaths",
+       fill = "Sex") +  # Adjust the legend title
+  theme_minimal() +
+  theme(plot.title = element_text(family = "Times New Roman", hjust = 0.5),
+        panel.grid = element_blank())  # Remove gridlines
+
+
+
+```
+
+```{r}
+# plotting heat index
+# this didnt save and I need to check on it again
+MaxTempVP <- merge(vpdmin_data_long, max_temperature_data_long, by = c("GEOID", "Date"))
+
+MaxTempVP_X <- MaxTempVP %>%
+  mutate(
+    SatVapPres = ifelse(MaxTemperature > 0,
+                        exp(34.494 - (4924.99 / (MaxTemperature + 237.1))) / ((MaxTemperature + 105) ^ 1.57),
+                        exp(43.494 - (6545.8 / (MaxTemperature + 278))) / ((MaxTemperature + 868) ^ 2))
+  )
+
+# converting VPDdeficiet from hPa to Pa
+MaxTempVP_X$MinVPDeficit = MaxTempVP_X$MinVPDeficit*100
+
+#vpdmax is actual vapor pressure - sat vapor pressure 
+MaxTempVP_X$VaporPressure =  MaxTempVP_X$SatVapPres - MaxTempVP_X$MinVPDeficit
+
+# relative humidity is vp divided by saturation vapor pressure (multiplied by 100 because numerator is hPa and denom is Pa)
+
+MaxTempVP_X$RelHum = ((MaxTempVP_X$VaporPressure)/MaxTempVP_X$SatVapPres)*100
+
+MaxTempVP_X$MaxTemperatureF = (MaxTempVP_X$MaxTemperature*(9/5)) + 32
+
+MaxTempVP_X$HeatIndex = heat.index(t = MaxTempVP_X$MaxTemperatureF,
+                                    rh = MaxTempVP_X$RelHum,
+                                    temperature.metric = "fahrenheit")
+
+
+
+MaxTempVP_X <- dplyr::select(MaxTempVP_X, -SatVapPres, -MaxTemperatureF, -MinVPDeficit)
+
+
+NC_county_sf = tigris::counties(state = "North Carolina", cb = TRUE)
+NC_tract_sf = tigris::tracts(state = "North Carolina", cb = TRUE)
+
+
+
+mean_warm_plot_HI <- MaxTempVP_X %>%
+  mutate(Date = as.Date(Date)) %>%
+  filter(month(Date) >= 5 & month(Date) <= 9) %>%
+  group_by(GEOID) %>%
+  summarize(HeatIndex = mean(HeatIndex, na.rm = TRUE))
+
+merged_data <- merge(NC_county_sf, mean_warm_plot_HI, by="GEOID", all.x = TRUE)
+
+plot1 = ggplot() +
+  geom_sf(data = merged_data, aes(fill = HeatIndex),  color = "white", size = 0.1) +
+  scale_fill_gradient(name = "Heat Index (F)", low = "darkseagreen1", high = "deeppink") +
+  labs(title = "Mean Warm-Season Heat Index (2000-2022)") +
+  theme_minimal() +
+  theme(axis.text = element_blank(), 
+        axis.title = element_blank(),
+        panel.grid = element_blank(),
+        plot.title = element_text(family = "Times New Roman", hjust = 0.5))
+
+
+
+
+```

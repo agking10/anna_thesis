@@ -1,0 +1,69 @@
+---
+title: "Load Library"
+author: "Anna Stouffer"
+date: "2024-01-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# library
+
+library(mgcv)
+library(dplyr)
+library(tidyr)
+library(lubridate)
+library(ggplot2)
+library(gamm4)
+library(survival)
+library(splines)
+library(broom)
+library(dlnm)
+library(weathermetrics)
+library(AICcmodavg)
+library(tidyverse)
+library(tidycensus)
+
+
+```
+
+```{r}
+# load library
+library(prism)
+library(tigris)
+library(terra)
+library(stringr)
+library(stars)
+library(lubridate)
+library(parallel)
+library(data.table)
+library(future.apply)
+library(tidycensus)
+library(tidyverse)
+library(here)
+library(exactextractr)
+library(sjPlot)
+library(wec)
+library(lme4)
+library(lme4)
+library(sjPlot)
+
+
+```
+
+```{r}
+# # # geospatial packages
+# # 
+# library(sf)
+# library(exactextractr)
+# library(raster)
+# library(terra)
+# 
+# #api key for census tract data
+# if(!dir.exists("~/Thesis Work/Thesis Files")){dir.create("~/Thesis Work/Thesis Files")}
+# census_api_key("bdfb48e7e8ca85e6c72d18481ec5c0951b9c0abf", install = T) #need to remove this eventually
+
+```

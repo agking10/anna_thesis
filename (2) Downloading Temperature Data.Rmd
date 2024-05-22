@@ -1,0 +1,691 @@
+---
+title: "(2) Downloading Temperature Data"
+author: "Anna Stouffer"
+date: "2024-05-22"
+output: html_document
+---
+
+# Andrew - the purpose of this file is to download 4km resolution daily max temp, min temp, dewpoint, and maxvpdeficit from prism and extract the average value for county and census tract. The ideal format of the output of these files are each row is a county or census tract and each column is a date. So ideally this code would spit out 8 .csv files - all of these weather variables extracted at the county and census tract levels.
+
+# current problems: I'm using an existing file to set the crs which isn't great. Also, I just change the variables for mintemp, maxtemp blah blah blah all through the code instead of havign a function or some way to easily change it
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+---
+title: "NC Temperature Analysis"
+author: "annastouffer"
+date: "2023-09-26"
+output: html_document
+---
+
+```{r}
+# install packages
+install.packages("prism")
+install.packages("lubridate")
+install.packages("future.apply")
+install.packages("sjPlot")
+```
+
+```{r}
+# load library
+library(prism)
+library(tigris)
+library(terra)
+library(stringr)
+library(stars)
+library(lubridate)
+library(parallel)
+library(data.table)
+library(future.apply)
+library(tidycensus)
+library(tidyverse)
+library(here)
+library(exactextractr)
+library(sjPlot)
+library(wec)
+library(lme4)
+library(lme4)
+library(sjPlot)
+
+
+```
+
+```{r}
+# set data download folder
+PRISM_DIR = ("/Users/annastouffer/Documents/Yale/Thesis/Temperature Data")
+#
+prism_set_dl_dir(PRISM_DIR)
+
+# set geographic resolution for dicennial 
+GEOGRAPHIC_RESOLUTION = "tract"
+```
+
+```{r}
+# setting the CRS of the NC shapefile (should incorporate this into the function in the future)
+
+# removing the dashes in the dates
+dates_prism_txt <- str_remove_all("2000-11-01", "-") 
+
+# folder name where file is located
+folder_name <- paste0("PRISM_tmean_stable_4kmD2_", dates_prism_txt, "_bil") 
+
+# file name in the above folder
+file_name <- paste0(folder_name, ".bil") 
+
+#- path to file to set CRS
+file_path <- file.path("/Users/annastouffer/Documents/Yale/Thesis/Temperature Data", folder_name, file_name)
+
+file_path
+
+# reading in file as raster object
+prism_2000_01_01_sr  = terra::rast(file_path)
+
+# setting crs of county shapefile
+NC_county_sf = tigris::counties(state = "North Carolina", cb = TRUE) %>%
+  st_as_sf() %>%
+  st_transform(terra::crs(prism_2000_01_01_sr))
+
+# setting crs of tracts shapefile
+NC_tract_sf = tigris::tracts(state = "North Carolina", cb = TRUE) %>%
+  st_as_sf() %>%
+  st_transform(terra::crs(prism_2000_01_01_sr))
+
+# cropping PRISM data to be just NC
+prism_2000_01_01_NC_sr <- terra::crop(prism_2000_01_01_sr, NC_county_sf)
+
+```
+
+
+```{r}
+# function to download PRISM data and crop it to just NC
+
+# detecting cores to run this in parallel
+num_cores <- detectCores() 
+
+# function for downloading PRISM data, cropping it, and saving it to file
+get_save_prism <- function(i, var_type) {
+  
+  # message
+  print(paste0("working on ", i))
+  
+  # ###
+  # temp_month = 2
+  # temp_year = 2014
+  # var_type = "vpdmin"
+  # ###
+  
+  # month and year
+  temp_month <- month_year_data[i, month] 
+  
+  temp_year <- month_year_data[i, year] 
+  
+  # setting the start date according to current month and year
+  start_date <- dmy(paste0("1/", temp_month, "/", temp_year))
+  # setting the end date according to current month and year
+  end_date <- start_date %m+% months(1) - 1
+  
+  # downloading daily PRISM data for the working month-year 
+  get_prism_dailys(
+    type = var_type,
+    minDate = as.character(start_date),
+    maxDate = as.character(end_date),
+    keepZip = FALSE
+  ) 
+  
+  ?get_prism_dailys
+
+  # list of dates of the working month-year
+  dates_ls <- seq(start_date, end_date, "days") 
+
+  # removing dashes 
+  dates_prism_txt <- str_remove_all(dates_ls, "-")
+
+  # setting the folder name
+  folder_name <- paste0("PRISM_vpdmin_stable_4kmD2_", dates_prism_txt, "_bil") 
+
+  # file name of the downloaded data inside the above folder 
+  file_name <- paste0(folder_name, ".bil") 
+  
+  # path to the file relative to the designated data folder 
+  file_path <- file.path(PRISM_DIR, folder_name, file_name)
+  (
+  # combine all the PRISM files as a RasterStack 
+  temp_stars <- terra::rast(file_path) 
+  )
+  
+  # Crop the raster to North Carolina
+  temp_stars_cropped <- terra::crop(temp_stars, NC_county_sf)
+
+  # save as a multi-band GeoTIFF file
+  writeRaster(temp_stars_cropped, paste0(PRISM_DIR, var_type, "_", temp_year, "_", temp_month,  "_cropped", ".tif"), overwrite = T)
+
+  
+  unlink(paste0(PRISM_DIR, "/", folder_name), recursive = TRUE)
+} 
+
+```
+
+```{r}
+# set the dates for the function to loop through
+(
+#--- create a set of year-month combinations to loop over ---#
+month_year_data <- expand.grid(month  = 1:12, year = 2021:2022) %>% 
+  data.table()
+)
+
+
+```
+
+```{r}
+# run the function (I dont think this is going in parallel right now)
+
+# execute download function
+future_lapply(
+  1:nrow(month_year_data), 
+  function (x) get_save_prism(x, "vpdmin")
+)
+
+
+```
+
+
+```{r}
+# viewing the rasterstacks
+test = rast("/Users/annastouffer/Documents/Yale/Thesis/Temperature Data/tmin_y2001_m1_cropped.tiff")
+
+# looks good!
+plot(test)
+
+```
+
+```{r}
+
+PRISM_DIR = ("/Users/annastouffer/Documents/Yale/Thesis/Temperature Data/vpdmin")
+
+
+# create a results dataframe with county and GEOID columns
+results <- data.frame(
+  county = NC_county_sf$NAME,
+  GEOID = NC_county_sf$GEOID,
+  stringsAsFactors = FALSE
+)
+
+
+# select .tif files in PRISM_DIR
+tif_files <- list.files(path = PRISM_DIR, pattern = ".*tif$")
+
+# set the months and years to loop through according to the months and years of the .tif files
+years <- as.integer(sub("Temperature Datavpdmin_(\\d{4}).*", "\\1", tif_files))
+months <- as.integer(sub("Temperature Datavpdmin_\\d{4}_(\\d{1,2}).*", "\\1", tif_files))
+
+# create a data frame to store file names, years, and months
+file_info <- data.frame(
+  file_name = tif_files,
+  year = years,
+  month = months
+)
+
+# sort the data frame by year and month in chronological order
+file_info <- file_info[order(file_info$year, file_info$month), ]
+
+# retrieve the sorted list of file names
+sorted_tif_files <- file_info$file_name
+
+# looping through each .tif file
+for (tif_file in sorted_tif_files){
+  
+  # print the current .tif file it's working on
+  #print(tif_file)
+  
+  # set the file path to the .tif file
+  tif_file = file.path(PRISM_DIR, tif_file)
+
+  # read the .tif into R
+  raster_stack <- rast(tif_file)
+
+  # extract how many days are in the month
+  num_days_in_month <- length(raster_stack[3])
+  
+  # looping through each day of the month
+  for (day in 1:num_days_in_month) {
+    
+    # extract the date from the name field in the raster stack
+    raster_name <- raster_stack[[day]]
+    date_in_name <- sub(".*_(\\d{8})_bil", "\\1", names(raster_stack[[day]]))
+    date_in_name <- sub(".*_(\\d{8})_bil", "\\1", raster_name)
+    
+    # use exact extract to find the county average
+    county_values <- exact_extract(raster_stack[[day]], NC_county_sf, weights = "area", fun = "mean", append_cols = TRUE)
+    
+    # if there is data, save this value to the table
+     if (any(!is.na(county_values$mean))) {
+      # Create a column name for the current day
+      day_column_name <- format(as.Date(date_in_name, format = "%Y%m%d"), format = "%Y-%m-%d")
+    
+      # Add the mean temperature values as a new column
+      results[, day_column_name] <- county_values$mean
+    }
+  }
+}
+
+# save the .csv to file
+write.csv(results, file.path(PRISM_DIR, "vpdmin_per_county_per_day_20002022.csv"), row.names = FALSE)
+
+dim(results)
+
+
+```
+
+
+```{r}
+# function for downloading demographics data
+get_acs_decennial <- function(geography){
+  acs_year <- get_decennial(
+    geography = geography,
+    variables = c("Total_pop" = "P001001",
+                  "White" = "P005003",
+                  "Black" = "P005004",
+                  "Asian" = "P005006",
+                  "Hispanic" = "P005010"),
+    year = 2010,
+    output = "wide",
+    geometry = TRUE,
+    state = 37
+  ) %>%
+    st_transform(crs = st_crs(4326)) %>%
+    filter(!st_is_empty(.)) %>%
+    mutate(Other = Total_pop - White - Black - Asian - Hispanic)
+  return(acs_year)
+}
+
+#race_tract includes data from 4911 tracts
+race_tract <- get_acs_decennial(GEOGRAPHIC_RESOLUTION)
+
+
+
+
+```
+
+
+```{r}
+# same as above but making a table with tracts
+
+# create a dataframe with a tract name and GEOID column
+tract_results <- data.frame(
+  NAME = race_tract$NAME,
+  GEOID = race_tract$GEOID,
+  stringsAsFactors = FALSE
+)
+
+# create a list of .tif files to extract from 
+tif_files <- list.files(path = PRISM_DIR, pattern = ".*tif$")
+
+# determine the years and months to loop through based on the files
+years <- as.integer(sub("tmean_(\\d{4}).*", "\\1", tif_files))
+months <- as.integer(sub("tmean_\\d{4}_(\\d{1,2}).*", "\\1", tif_files))
+
+# create a data frame to store file names, years, and months
+file_info <- data.frame(
+  file_name = tif_files,
+  year = years,
+  month = months
+)
+
+# sort the data frame by year and month chronologically
+file_info <- file_info[order(file_info$year, file_info$month), ]
+
+# retrieve the sorted list of file names
+sorted_tif_files <- file_info$file_name
+
+# loop through each file
+for (tif_file in sorted_tif_files){
+  
+  # print the current file the code is working on
+  print(tif_file)
+  
+  # set the path to the file
+  tif_file = file.path(PRISM_DIR, tif_file)
+
+  # read the file in to R
+  raster_stack <- rast(tif_file)
+
+  # extract how many days are in the current month of the file
+  num_days_in_month <- length(raster_stack[3])
+  
+  # loop through the days
+  for (day in 1:num_days_in_month) {
+    
+    # figure out the current date
+    raster_name <- raster_stack[[day]]
+    date_in_name <- sub(".*_(\\d{8})_bil", "\\1", names(raster_stack[[day]]))
+    date_in_name <- sub(".*_(\\d{8})_bil", "\\1", raster_name)
+    
+    # use exact extract to find the mean tract values
+    tract_values <- exact_extract(raster_stack[[day]], race_tract, weights = "area", fun = "mean", append_cols = TRUE)
+    
+    # if there is data in the file, save it to the dataframe
+     if (any(!is.na(tract_values$mean))) {
+  
+     # Create a column name for the current day
+      day_column_name <- format(as.Date(date_in_name, format = "%Y%m%d"), format = "%Y-%m-%d")
+    
+      # Add the mean temperature values as a new column
+      tract_results[, day_column_name] <- tract_values$mean
+    }
+  }
+}
+
+# save the data to file
+write.csv(tract_results, file.path(PRISM_DIR, "mean_temperature_per_tract_per_day_year.csv"), row.names = FALSE)
+
+```
+
+
+#### Everything under here is irrlevant I think 
+
+
+
+```{r}
+
+
+
+#tract_results <- tract_results %>% rename(NAME = tract)
+
+# join the temperature-per-tract data with the demographics data
+temp <- tract_results %>%
+  left_join(race_tract, by = c("GEOID","NAME"))
+
+# rearrange data
+temp_1 <- temp %>%
+  select(-geometry) %>% 
+  pivot_longer(cols = White:Other,
+               names_to = "Race",
+               values_to = "Estimates") %>%
+  mutate(Race = factor(Race, levels = c("White", "Black", "Hispanic", "Asian", "Other")),
+         Estimates = as.numeric(Estimates)) %>%  # Convert Estimates to numeric
+  mutate(weight = Estimates / Total_pop)
+
+temp_1 = temp_1 %>%
+  select(NAME, GEOID, Total_pop, Race, Estimates, weight, everything())
+
+```
+
+
+
+```{r}
+
+# plotting density of races in NC
+
+race_ZCTA <- get_acs_decennial("zcta")
+
+head(race_ZCTA)
+
+# Load the required libraries
+library(ggplot2)
+
+# Calculate Asian population density
+race_ZCTA$Asian_Density <- race_ZCTA$Asian / race_ZCTA$Total_pop
+
+# Plot the density map
+ggplot(race_ZCTA) +
+  geom_sf(aes(fill = Asian_Density)) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Asian Population Density", limits = c(0, 1)) +
+  labs(title = "Asian Population Density per ZCTA in North Carolina") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+# Calculate Black population density
+race_ZCTA$Black_Density <- race_ZCTA$Black / race_ZCTA$Total_pop
+
+# Plot the density map
+ggplot(race_ZCTA) +
+  geom_sf(aes(fill = Black_Density)) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Black Population Density", limits = c(0, 1)) +
+  labs(title = "Black Population Density per ZCTA in North Carolina") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+
+# Calculate Hispanic population density
+race_ZCTA$Hispanic_Density <- race_ZCTA$Hispanic / race_ZCTA$Total_pop
+
+# Plot the density map
+ggplot(race_ZCTA) +
+  geom_sf(aes(fill = Hispanic_Density)) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Hispanic Population Density", limits = c(0, 1)) +
+  labs(title = "Hispanic Population Density per ZCTA in North Carolina") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+
+# Calculate White population density
+race_ZCTA$White_Density <- race_ZCTA$White / race_ZCTA$Total_pop
+
+# Plot the density map
+ggplot(race_ZCTA) +
+  geom_sf(aes(fill = White_Density)) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "White Population Density", limits = c(0, 1)) +
+  labs(title = "White Population Density per ZCTA in North Carolina") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+
+```
+
+
+```{r}
+# finding statistically significant heat waves 
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+# weighted effect coding
+#This function makes contrasts based on population size of each observation.
+Make_Contrasts <- function(data, ref = "White"){
+  levels <- levels(data$Race)
+  index <- which(levels == ref)
+  population <- data %>% group_by(Race) %>% arrange(Race) %>% summarise(n=sum(Estimates))
+  contrasts <-  contr.wec(data$Race, ref)
+  contrasts[index, ] <- -1 * population$n[-index]/population$n[index]
+  return(contrasts)
+}
+
+Make_Contrasts_tracts <- function(data, ref = "White"){
+  levels <- levels(data$Race)
+  index <- which(levels == ref)
+  tracts <- data %>% group_by(Race) %>% arrange(Race) %>% summarise(n=sum(weight))
+  contrasts <-  contr.wec(data$Race, ref)
+  contrasts[index, ] <- -1 * tracts$n[-index]/tracts$n[index]
+  return(contrasts)
+}
+
+```
+
+
+```{r}
+
+library(tidyr)
+
+# Acreating a date column, rather than having many date columns
+temp_1_long <- temp_1 %>%
+  pivot_longer(cols = starts_with("20"), 
+               names_to = "date",
+               values_to = "mean_temp")
+
+# using the contrasts function
+contrasts(temp_1_long$Race) <- Make_Contrasts_tracts(temp_1_long, ref = "Other")
+
+# removing NA rows
+temp_1_long <- na.omit(temp_1_long)
+
+# changing the class of rows
+temp_1_long$Date <- as.Date(temp_1_long$date)
+temp_1_long$f.GEOID <- as.factor(temp_1_long$GEOID)
+
+# running the model
+m.effect <- lmer(mean_temp ~ Race + (1|Date) + (1|f.GEOID) , data = temp_1_long, REML=T)
+tab_model(m.effect)
+
+# adding a residuals column
+temp_1_long$residuals <- resid(m.effect)*sqrt(weights(m.effect))
+test <-subset(temp_1_long, residuals<=-40) %>%
+  group_by(GEOID) %>%
+  summarise(n = n())
+
+```
+
+```{r,echo=TRUE}
+# plotting the residuals. Should by symmetrical 
+# check with Daniel
+plot(m.effect, xlab = "Fitted", ylab = "Residual")
+```
+
+
+```{r,echo=TRUE}
+# QQ plot to assess normality. Should be approx a straight line
+# check with Daniel
+weighted_residual <- resid(m.effect)*sqrt(weights(m.effect))
+qqnorm(weighted_residual)
+qqline(weighted_residual)
+```
+
+```{r,echo=TRUE}
+Predicted_values <- fitted(m.effect)
+#The calculation was based on the all predictions within the same county and year, using race-specific population size as weights.
+#one tract can have five predictions, corresponding to five races. The county average prediction is the weighted mean for all these predictions, based on population size of each race.
+
+temp_1_long <- temp_1_long %>%
+  mutate(prediction = Predicted_values) %>%
+  group_by(GEOID,Date) %>%
+  mutate(weighted_mean = weighted.mean(prediction, Estimates)) %>%
+  ungroup()
+
+```
+
+
+```{r,echo=FALSE, results='hide'}
+#This function is used for making maps for county-level HICDD at a specific years.
+plot_day_specific_temp <- function(data,specific_date){
+  values <- quantile(data$weighted_mean, probs = c(0,0.2,0.4,0.6,0.8,1))
+  colors <- c("deepskyblue4","deepskyblue3", "lightblue1", "orange", "red3","red4")
+  
+  p1 <- ggplot() +
+  geom_sf(data = subset(data, date==specific_date), 
+          aes(fill = weighted_mean,geometry=geometry)) +
+  scale_fill_gradientn(colors = colors,
+                       limits = c(min(values), max(values))) +
+  theme_minimal() +
+  labs(fill = "Temp") +
+  ggtitle(paste("County-level Temp At", specific_year))
+  
+  return(p1)
+}
+```
+
+```{r,echo=TRUE, results='hide'}
+county_geo <- get_acs_decennial("county") %>%
+  mutate(county_fips = substr(GEOID,3,5)) %>%
+  select(GEOID, county_fips, NAME, Total_pop, geometry)
+
+```
+
+```{r}
+### Not working
+
+temp_1_long = temp_1_long %>%
+  mutate(county_fips = substr(GEOID,3,5))
+
+temp_county <- temp_1_long %>% 
+  select(county_fips, year, weighted_mean) %>% 
+  unique() %>% 
+  left_join(county_geo, by = c("county_fips"))
+
+#The coolest year is 2014 and the warmest year is 2010
+plot_day_specific_temp(temp_county, 2000)
+plot_day_specific_temp(temp_county, 2010)
+
+#grid.arrange(p1+labs(title = "Coolest"), p2+labs(title = "Warmest"), ncol = 2)
+head(temp_1_long)
+
+```
+
+```{r}
+#This function is used for making maps for county-level, race-specific HICDD percent difference at a specific years.
+plot_percent_diff_temp <- function(data,specific_year,race){
+  values <- quantile(data$percent_diff, probs = c(0,0.2,0.4,0.6,0.8,1))
+  colors <- c("deepskyblue4","deepskyblue3", "lightblue1", "orange", "red3","red4")
+  
+  p1 <- ggplot() +
+  geom_sf(data = subset(data, year==specific_year & Race == race), 
+          aes(fill = percent_diff,geometry=geometry)) +
+  scale_fill_gradientn(colors = colors,
+                       limits = c(min(values), max(values))) +
+  theme_minimal() +
+  labs(fill = "Temp Percent Difference (%)") +
+  ggtitle(paste("County-level Temp At", specific_year, "For", race))
+  
+  return(p1)
+}
+
+```
+
+```{r}
+#Note that the predicted value is race-specific.
+temp_1_long <- temp_1_long %>%
+  group_by(county_fips,year,Race) %>%
+  mutate(weighted_mean_race = weighted.mean(prediction, Estimates)) %>%
+  mutate(percent_diff = (weighted_mean_race - weighted_mean)/weighted_mean*100) %>%
+  ungroup()
+
+temp_county_race <- temp_1_long %>% 
+  select(county_fips, year, Race,weighted_mean_race, percent_diff) %>% 
+  unique() %>% 
+  left_join(county_geo, by = c("county_fips"))
+  
+plot_percent_diff_temp(temp_county_race, 2000, "Hispanic")
+#plot_percent_diff_temp(temp_county_race, 2010, "Black")
+
+#We can plot race-specific percent difference as each tract was assigned with five races
+
+
+```
