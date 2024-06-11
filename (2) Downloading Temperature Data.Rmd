@@ -7,7 +7,6 @@ output: html_document
 
 # Andrew - the purpose of this file is to download 4km resolution daily max temp, min temp, dewpoint, and maxvpdeficit from prism and extract the average value for county and census tract. The ideal format of the output of these files are each row is a county or census tract and each column is a date. So ideally this code would spit out 8 .csv files - all of these weather variables extracted at the county and census tract levels.
 
-# current problems: I'm using an existing file to set the crs which isn't great. Also, I just change the variables for mintemp, maxtemp blah blah blah all through the code instead of havign a function or some way to easily change it
 
 
 
