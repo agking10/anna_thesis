@@ -5,21 +5,6 @@ date: "2024-05-22"
 output: html_document
 ---
 
-# Andrew - the purpose of this file is to download 4km resolution daily max temp, min temp, dewpoint, and maxvpdeficit from prism and extract the average value for county and census tract. The ideal format of the output of these files are each row is a county or census tract and each column is a date. So ideally this code would spit out 8 .csv files - all of these weather variables extracted at the county and census tract levels.
-
-
-
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
----
-title: "NC Temperature Analysis"
-author: "annastouffer"
-date: "2023-09-26"
-output: html_document
----
-
 ```{r}
 source("load_libraries.R")
 load_libraries()
