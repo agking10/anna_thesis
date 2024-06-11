@@ -5,11 +5,6 @@ date: "2024-02-03"
 output: html_document
 ---
 
-# Andrew - you should be able to put the matched dataset with the temperature dataset into this and get the dlnms...this is the chaotic file where I made a new copy of everything to change every single parameter.
-
-# I'm going to send you the matched file so you can run this without rerunning all of the data. Upload warm_season_matched_data_blocks_2022.csv and then run the cells with this in file #4 and then come back and do the analysis
-
-# also daniel wants me to try the cumulative thing and to try with a quasipoisson instead of clogit...I did this in one line below. 
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)

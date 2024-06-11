@@ -5,8 +5,6 @@ date: "2024-04-10"
 output: html_document
 ---
 
-# Andrew - this is an example of how I was making the plots. Bad system - I was running the DLNM analysis file for each thing (like 2000-2022, Max temperature) and then coming over here and generating the plots. And then going back and running the analysis with different parameters and then coming back over here...
-
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)

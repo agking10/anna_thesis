@@ -7,9 +7,6 @@ output:
     toc: true
     toc_float: true
 ---
-# Andrew - this is creating SVI tertiles of counties .. you need to uplaod svi_2020_tract_overall_nad83.tif to run this
-
-## Data Extraction
 
 ```{r ,echo=FALSE}
 GetCensusData <- function(geography) {

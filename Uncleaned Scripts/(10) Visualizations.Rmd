@@ -5,8 +5,6 @@ date: "2024-01-11"
 output: html_document
 ---
 
-# this is how I generate my plots
-
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)

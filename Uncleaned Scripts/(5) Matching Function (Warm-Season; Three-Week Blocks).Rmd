@@ -9,14 +9,6 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Andrew - this is the matching function for the warm season deaths. It should pair each death with the controls in the same strata (three-week period). FYI this takes like many hours to run with all the data
-
-# To execute this function, you must run the 'Uploading Data and Formatting' script first
-
-## this function matches deaths (cases) with controls within the same three-week block. The warm season (May 1 - September 30) each year is divided into 21 day intervals. Block 1 corresponds to May 1 - 21 of each year. 
-
-
-##### This file is no longer needed
 
 ```{r}
 ################################################################################

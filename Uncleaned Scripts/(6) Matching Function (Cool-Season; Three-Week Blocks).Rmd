@@ -9,11 +9,6 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Andrew - same deal but with the cool season 
-
-# To execute this function, you must run the 'Uploading Data and Formatting' script first
-
-## this function matches deaths (cases) with controls within the same three-week block. The warm season (May 1 - September 30) each year is divided into 21 day intervals. Block 1 corresponds to May 1 - 21 of each year. 
 
 ```{r}
 # loop isnt working ... check on this ...

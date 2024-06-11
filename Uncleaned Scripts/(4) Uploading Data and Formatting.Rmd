@@ -5,12 +5,6 @@ date: "2024-01-11"
 output: html_document
 ---
 
-# Andrew - this is the most chaotic file of the code >.<
-# this uploads the death and temperature data, puts them in long formats, and combines them in different ways. The issue is that i basically continuously uploaded this file as I worked on my thesis, so as you get further down you have to run other scripts to generate the data that you then use. So basically like try to run this with the data you generated, and wherever it stops working bc you don't have the correct file (should happen when you need matched data), go to file #5
-
-# you will need to run file #9 if you want to do any of the SVI stuff
-
-
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
