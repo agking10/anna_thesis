@@ -1,0 +1,4 @@
+DEATH_DATA_DIR <- file.path("death_data")
+OPIOD_DEATH_DIR <- file.path(DEATH_DATA_DIR, "opiod_death_tables")
+TEMPERATURE_DATA_DIR <- file.path("temperature_data")
+MISC_DATA_DIR <- file.path("misc_data")

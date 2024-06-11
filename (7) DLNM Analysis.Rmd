@@ -13,131 +13,46 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-
 ```
 
 ```{r}
-# does not work
+# load libraries
+source("load_libraries.R")
+source("paths.R")
 
-data = warm_season_matched_data_blocks
-  plot_fix_lag=4
-  plot_fix_temp=35
-
-# trying to make a function 
-analyze_data <- function(data, lag_var, start_year, end_year, plot_fix_temp, plot_fix_lag) {
-  
-  # Filter data based on specified block and opioid contribution
-  dataf <- data %>%
-    filter(block %in% c(1, 2, 3, 4, 5, 6, 7),
-           opioid_contributing == "yes")
-  
-  # Convert Date column to Date type
-  dataf$Date <- as.Date(dataf$Date)
-  
-  # Create final dataframe by binding rows with data_aggregate
-  final_dataframe <- bind_rows(dataf, data_aggregate)
-  
-  # Extract year from Date and filter based on start_year and end_year
-  final_dataframe <- final_dataframe %>%
-    mutate(Year = year(Date)) %>%
-    filter(Year >= start_year & Year <= end_year) %>%
-    dplyr::select(-Year)
-  
-  # Arrange rows by Date
-  final_dataframe <- final_dataframe %>%
-    arrange(Date)
-  
-  final_dataframe <- final_dataframe %>%
-    arrange(county, Date) %>%
-    group_by(county) %>%
-    mutate(
-      lag0 = !!rlang::sym(lag_var),
-      lag1 = lag(!!rlang::sym(lag_var), 1),
-      lag2 = lag(!!rlang::sym(lag_var), 2),
-      lag3 = lag(!!rlang::sym(lag_var), 3),
-      lag4 = lag(!!rlang::sym(lag_var), 4),
-      lag5 = lag(!!rlang::sym(lag_var), 5),
-      lag6 = lag(!!rlang::sym(lag_var), 6)
-    ) %>%
-    ungroup()
-  
-  # Create the exposure history matrix
-  Qdata <- final_dataframe %>%
-  dplyr::select(lag0:lag6)
-  
-  # Creating a crossbasis matrix
-  range <- range(final_dataframe[[lag_var]],na.rm=T)
-  nknots <- 4
-  nlagknots <- 2
-  ktemp <- range[1] + (range[2] - range[1]) / (nknots + 1) * 1:nknots
-  klag <- exp((log(6)) / (nlagknots + 2) * 1:nlagknots)
-  cbnest <- crossbasis(Qdata, lag = 6, argvar = list("ns", df = 4), arglag = list(fun = "ns", knots = klag), compare = "median")
-  
-  # Regression model
-  mnest <- clogit(binary ~ cbnest + strata(uniqueID), final_dataframe, method = "exact")
-  
-  # Predicting specific effect summaries
-  
-  cenvalue=median(final_dataframe[[lag_var]])
-  range <- range(final_dataframe[[lag_var]],na.rm=T)
-  pnest <- crosspred(cbnest, mnest, cen=cenvalue, at=round(range[1]):round(range[2]))
-  
- # Plotting
-  plot1 <- plot(pnest, zlab = "OR", xlab = paste(lag_var), ylab = "Lag (days)")
-  plot2 <- plot(pnest, var = plot_fix_temp, ylab = paste("OR for", lag_var, plot_fix_temp), xlab = "Lag (days)", xlim = c(0, 6))
-  plot3 <- plot(pnest, lag = plot_fix_lag, ylab = paste("OR at lag", plot_fix_lag), xlab = paste(lag_var))
-
-  # Checking AIC
-  models <- list(mnest)
-  aic <- aictab(cand.set = models)
-
-  return(list(plot1 = plot1, plot2 = plot2, plot3 = plot3, aic = aic))
-}
-
-
-result <- analyze_data(warm_season_matched_data_blocks, lag_var = "HeatIndex", start_year = 2000, end_year = 2010, plot_fix_temp=160, plot_fix_lag=4)
-
+load_libraries()
 ```
-
 
 ```{r}
 ### is significant
-# warm season 
+# warm season
 # short sept
 # max temp
 # opioid contibuting == yes
 
-warm_season_matched_data_blocks_edited = warm_season_matched_data_blocks %>%
+warm_season_matched_data_blocks <- read.csv(file.path(MISC_DATA_DIR, "warm_season_matched_data_blocks.csv"))
+cool_season_matched_data_blocks <- read.csv(file.path(MISC_DATA_DIR, "cool_season_matched_data_blocks.csv"))
+
+warm_season_matched_data_blocks_edited <- warm_season_matched_data_blocks %>%
   filter(block %in% c(1, 2, 3, 4, 5, 6, 7))
 
 warm_season_matched_data_blocks_edited <- warm_season_matched_data_blocks_edited %>%
-                    filter(opioid_contributing == "yes")
+  filter(opioid_contributing == "yes")
 
-
-# warm_season_matched_data_blocks_edited <- warm_season_matched_data_blocks_edited %>%
-#   filter(opioid_contributing == "yes"& 
-#          SVI_tertile == "Low")
-
-
-# data_aggregate_warm <- data_aggregate %>%
-#   mutate(Month = month(Date)) %>%
-#   filter(Month >= 4 & Month <= 10) %>%
-#   dplyr::select(-Month)
-
-warm_season_matched_data_blocks_edited$Date = as.Date(warm_season_matched_data_blocks_edited$Date)
+warm_season_matched_data_blocks_edited$Date <- as.Date(warm_season_matched_data_blocks_edited$Date)
 
 final_dataframe <- bind_rows(warm_season_matched_data_blocks_edited, data_aggregate)
 
 final_dataframe <- final_dataframe %>%
-   mutate(Year = year(Date)) %>%
-   filter(Year >= 2000 & Year <= 2022) %>%
-   dplyr::select(-Year)
+  mutate(Year = year(Date)) %>%
+  filter(Year >= 2000 & Year <= 2022) %>%
+  dplyr::select(-Year)
 
-# make the rows go in chronological order 
+# make the rows go in chronological order
 final_dataframe <- final_dataframe %>%
   arrange(Date)
 
-data = final_dataframe
+data <- final_dataframe
 
 head(final_dataframe, 1000)
 
@@ -153,14 +68,6 @@ data <- data %>%
     lag4 = lag(MaxTemperature, 4),
     lag5 = lag(MaxTemperature, 5),
     lag6 = lag(MaxTemperature, 6)
-    # lag7 = lag(MaxTemperature, 7),
-    # lag8 = lag(MaxTemperature, 8),
-    # lag9 = lag(MaxTemperature, 9),
-    # lag10 = lag(MaxTemperature, 10),
-    # lag11 = lag(MaxTemperature, 11),
-    # lag12 = lag(MaxTemperature, 12),
-    # lag13 = lag(MaxTemperature, 13),
-    # lag14 = lag(MaxTemperature, 14)
   ) %>%
   ungroup()
 
@@ -168,80 +75,60 @@ data <- data %>%
 Qdata <- data %>%
   dplyr::select(lag0:lag6)
 
-head(Qdata, 100)
-
 # creating a crossbasis matrix. "bs" is a b-spline basis for polynomial splines
 # not sure if I should use "bs" degree=2 or if I should use "ns"
-range <- range(data$MaxTemperature,na.rm=T)
-nknots<-4
-nlagknots<-2
-ktemp <- range[1] + (range[2]-range[1])/(nknots+1)*1:nknots
-klag<-exp((log(6))/(nlagknots+2)*1:nlagknots)
-# cbnest = crossbasis(Qdata, lag=14, argvar = list("ns", df=5), arglag=list(fun="ns", knots=klag, df=4))
-# temperature knots here are making last plot weird
-cbnest = crossbasis(Qdata, lag=6, argvar = list("ns", df=3), arglag=list(fun="ns", knots=klag), compare="median")
-#cbnest = crossbasis(Qdata, lag=14, argvar = list("bs", degree=2, df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
+range <- range(data$MaxTemperature, na.rm = T)
+nknots <- 4
+nlagknots <- 2
+ktemp <- range[1] + (range[2] - range[1]) / (nknots + 1) * 1:nknots
+klag <- exp((log(6)) / (nlagknots + 2) * 1:nlagknots)
+cbnest <- crossbasis(Qdata, lag = 6, argvar = list("ns", df = 3), arglag = list(fun = "ns", knots = klag), compare = "median")
 
 # regression model
-mnest <- clogit(binary~ cbnest + strata(uniqueID), data, method = "exact")
-# took  + ns(MeanTemperature, df = 3), is having it in there double-fitting for temp?
-# + ns(RelHum, df = 5)
+mnest <- clogit(binary ~ cbnest + strata(uniqueID), data, method = "exact")
 
 # predicting specific effect summaries
-cenvalue=median(warm_season_matched_data_blocks_edited$MaxTemperature)
-range=range(warm_season_matched_data_blocks_edited$MaxTemperature)
-pnest <- crosspred(cbnest, mnest, cen=cenvalue, at=10:40, cumul=TRUE)
+cenvalue <- median(warm_season_matched_data_blocks_edited$MaxTemperature)
+range <- range(warm_season_matched_data_blocks_edited$MaxTemperature)
+pnest <- crosspred(cbnest, mnest, cen = cenvalue, at = 10:40, cumul = TRUE)
 
 
-# plotting 
-plot(pnest, zlab="OR", xlab="Temperature", ylab="Lag (days)")
-plot(pnest, var=40, ylab="OR for Temperature X", xlab="Lag (days)", xlim=c(0,6))
+# plotting
+plot(pnest, zlab = "OR", xlab = "Temperature", ylab = "Lag (days)")
+plot(pnest, var = 40, ylab = "OR for Temperature X", xlab = "Lag (days)", xlim = c(0, 6))
 plot(pnest, lag = 2, ylab = "Odds Ratio", xlab = "Maximum Temperature (C)", col = "brown2")
 title(main = "Wave One: Warm Season Odds Ratio of Fatal Opioid Overdose\nFollowing a Cumulative Two-Day Lag Of Maximum Temperature\n(2000-2022)")
 
-
-### making plot objects 
-library(patchwork)
-
-
-
-# cumul=TRUE
-
+### making plot objects
 
 # checking AIC
-models = list(mnest)
+models <- list(mnest)
 aictab(cand.set = models)
-
 
 # # Open a PDF device
 # pdf("~/Thesis Work/Thesis Files/pdfs/warm_season_wave2_lag2.pdf")
-# 
+#
 # # Plot the data
 # plot(pnest, lag = 2, ylab = "Odds Ratio", xlab = "Maximum Temperature (C)", col = "brown2")
 # title(main = "Wave Two: Warm Season Odds Ratio of Fatal Opioid Overdose\nFollowing a Cumulative Two-Day Lag Of Maximum Temperature\n(2012-2022)")
-# 
+#
 # # Close the PDF device
 # dev.off()
-
-
 ```
 
 
 ```{r}
 ## For making the prediction tables
-pred = pnest$matRRfit
-pred_high = pnest$matRRhigh
-pred_low = pnest$matRRlow
+pred <- pnest$matRRfit
+pred_high <- pnest$matRRhigh
+pred_low <- pnest$matRRlow
 
-pred_low_df = as.data.frame(pred_low)
-pred_high_df = as.data.frame(pred_high)
+pred_low_df <- as.data.frame(pred_low)
+pred_high_df <- as.data.frame(pred_high)
 
-ci_df <- Map(function(x, y) sprintf("(%s, %s)", x, y), round(pred_low_df,2), round(pred_high_df,2))
+ci_df <- Map(function(x, y) sprintf("(%s, %s)", x, y), round(pred_low_df, 2), round(pred_high_df, 2))
 
 ci_df <- as.data.frame(ci_df)
-
-#write.csv(ci_df, "~/Thesis Work/Thesis Files/tables/warm_overall_CI.csv")
-
 
 check_over_under <- function(pair) {
   values <- as.numeric(unlist(strsplit(gsub("[()]", "", pair), ", ")))
@@ -272,47 +159,38 @@ print(binary_df)
 ```{r}
 ### race-weighted temp (post 2010 only)
 ### is significant
-# warm season 
+# warm season
 # short sept
 # max temp
 # opioid contibuting == yes
 
-# warm_season_matched_data_blocks_edited <- warm_season_matched_data_blocks %>%
-#    mutate(Year = year(Date)) %>%
-#    filter(Year >= 2012 & Year <= 2022) %>%
-#    dplyr::select(-Year)
 
 warm_season_matched_data_blocks_edited <- warm_season_matched_data_blocks %>%
-   mutate(Year = year(Date)) %>%
-   filter(Year >= 2012 & Year <= 2022 & simple_race == "Black Non-Hispanic") %>%
-   dplyr::select(-Year)
+  mutate(Year = year(Date)) %>%
+  filter(Year >= 2012 & Year <= 2022 & simple_race == "Black Non-Hispanic") %>%
+  dplyr::select(-Year)
 
 
-warm_season_matched_data_blocks_edited = warm_season_matched_data_blocks_edited %>%
+warm_season_matched_data_blocks_edited <- warm_season_matched_data_blocks_edited %>%
   filter(block %in% c(1, 2, 3, 4, 5, 6, 7))
 
 warm_season_matched_data_blocks_edited <- warm_season_matched_data_blocks_edited %>%
-                    filter(opioid_contributing == "yes")
+  filter(opioid_contributing == "yes")
 
-# data_aggregate_warm <- data_aggregate %>%
-#   mutate(Month = month(Date)) %>%
-#   filter(Month >= 4 & Month <= 10) %>%
-#   dplyr::select(-Month)
-
-warm_season_matched_data_blocks_edited$Date = as.Date(warm_season_matched_data_blocks_edited$Date)
+warm_season_matched_data_blocks_edited$Date <- as.Date(warm_season_matched_data_blocks_edited$Date)
 
 final_dataframe <- bind_rows(warm_season_matched_data_blocks_edited, data_aggregate)
 
 final_dataframe <- final_dataframe %>%
-   mutate(Year = year(Date)) %>%
-   filter(Year >= 2012 & Year <= 2022) %>%
-   dplyr::select(-Year)
+  mutate(Year = year(Date)) %>%
+  filter(Year >= 2012 & Year <= 2022) %>%
+  dplyr::select(-Year)
 
-# make the rows go in chronological order 
+# make the rows go in chronological order
 final_dataframe <- final_dataframe %>%
   arrange(Date)
 
-data = final_dataframe
+data <- final_dataframe
 
 head(final_dataframe, 1000)
 
@@ -328,14 +206,6 @@ data <- data %>%
     lag4 = lag(RaceWeightedMaxTemp, 4),
     lag5 = lag(RaceWeightedMaxTemp, 5),
     lag6 = lag(RaceWeightedMaxTemp, 6)
-    # lag7 = lag(MaxTemperature, 7),
-    # lag8 = lag(MaxTemperature, 8),
-    # lag9 = lag(MaxTemperature, 9),
-    # lag10 = lag(MaxTemperature, 10),
-    # lag11 = lag(MaxTemperature, 11),
-    # lag12 = lag(MaxTemperature, 12),
-    # lag13 = lag(MaxTemperature, 13),
-    # lag14 = lag(MaxTemperature, 14)
   ) %>%
   ungroup()
 
@@ -343,90 +213,74 @@ data <- data %>%
 Qdata <- data %>%
   dplyr::select(lag0:lag6)
 
-head(Qdata, 100)
-
 # creating a crossbasis matrix. "bs" is a b-spline basis for polynomial splines
 # not sure if I should use "bs" degree=2 or if I should use "ns"
-range <- range(data$RaceWeightedMaxTemp,na.rm=T)
-nknots<-4
-nlagknots<-2
-ktemp <- range[1] + (range[2]-range[1])/(nknots+1)*1:nknots
-klag<-exp((log(6))/(nlagknots+2)*1:nlagknots)
-# cbnest = crossbasis(Qdata, lag=14, argvar = list("ns", df=5), arglag=list(fun="ns", knots=klag, df=4))
-# temperature knots here are making last plot weird
-cbnest = crossbasis(Qdata, lag=6, argvar = list("ns", df=3), arglag=list(fun="ns", knots=klag), compare="median")
-#cbnest = crossbasis(Qdata, lag=14, argvar = list("bs", degree=2, df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
+range <- range(data$RaceWeightedMaxTemp, na.rm = T)
+nknots <- 4
+nlagknots <- 2
+ktemp <- range[1] + (range[2] - range[1]) / (nknots + 1) * 1:nknots
+klag <- exp((log(6)) / (nlagknots + 2) * 1:nlagknots)
+cbnest <- crossbasis(Qdata, lag = 6, argvar = list("ns", df = 3), arglag = list(fun = "ns", knots = klag), compare = "median")
 
 # regression model
-mnest <- clogit(binary~ cbnest + strata(uniqueID), data, method = "exact")
-# took  + ns(MeanTemperature, df = 3), is having it in there double-fitting for temp?
-# + ns(RelHum, df = 5)
+mnest <- clogit(binary ~ cbnest + strata(uniqueID), data, method = "exact")
 
 # predicting specific effect summaries
-cenvalue=median(data$RaceWeightedMaxTemp, na.rm=TRUE)
-range=range(data$RaceWeightedMaxTemp, na.rm=TRUE)
-pnest <- crosspred(cbnest, mnest, cen=cenvalue, at=8:40, cumul=TRUE)
+cenvalue <- median(data$RaceWeightedMaxTemp, na.rm = TRUE)
+range <- range(data$RaceWeightedMaxTemp, na.rm = TRUE)
+pnest <- crosspred(cbnest, mnest, cen = cenvalue, at = 8:40, cumul = TRUE)
 
-
-# plotting 
-plot(pnest, zlab="OR", xlab="Temperature", ylab="Lag (days)")
-plot(pnest, var=35, ylab="OR for Temperature X", xlab="Lag (days)", xlim=c(0,6))
+# plotting
+plot(pnest, zlab = "OR", xlab = "Temperature", ylab = "Lag (days)")
+plot(pnest, var = 35, ylab = "OR for Temperature X", xlab = "Lag (days)", xlim = c(0, 6))
 plot(pnest, lag = 2, ylab = "Odds Ratio", xlab = "Maximum Temperature (C)", col = "brown2")
 title(main = "Wave Two: Race-Weighted Temperature Exposure \nWarm Season Odds Ratio of Fatal Opioid Overdose\nFollowing a Cumulative Two-Day Lag Of Maximum Temperature\n(2012-2022)")
 
 # checking AIC
-models = list(mnest)
+models <- list(mnest)
 aictab(cand.set = models)
-
 
 # # Open a PDF device
 # pdf("~/Thesis Work/Thesis Files/pdfs/warm_season_wave2_lag2.pdf")
-# 
+#
 # # Plot the data
 # plot(pnest, lag = 2, ylab = "Odds Ratio", xlab = "Maximum Temperature (C)", col = "brown2")
 # title(main = "Wave Two: Warm Season Odds Ratio of Fatal Opioid Overdose\nFollowing a Cumulative Two-Day Lag Of Maximum Temperature\n(2012-2022)")
-# 
+#
 # # Close the PDF device
 # dev.off()
-
-
 ```
 
 ```{r}
 # maybe some significance?
-# warm season 
+# warm season
 # short sept
 # mean temp
 # opioid contibuting == yes
 
+# TODO: are these comments todos? Or are they irrelevant?
 # changing this from data_aggregate to data_aggregate_warm changes things and it shouldn't...
 
-
-warm_season_matched_data_blocks_edited = warm_season_matched_data_blocks %>%
+warm_season_matched_data_blocks_edited <- warm_season_matched_data_blocks %>%
   filter(block %in% c(1, 2, 3, 4, 5, 6, 7))
 
 warm_season_matched_data_blocks_edited <- warm_season_matched_data_blocks_edited %>%
-                    filter(opioid_contributing == "yes")
+  filter(opioid_contributing == "yes")
 
 data_aggregate_warm <- data_aggregate %>%
   mutate(Month = month(Date)) %>%
   filter(Month >= 4 & Month <= 10) %>%
   select(-Month)
 
-warm_season_matched_data_blocks_edited$Date = as.Date(warm_season_matched_data_blocks_edited$Date)
+warm_season_matched_data_blocks_edited$Date <- as.Date(warm_season_matched_data_blocks_edited$Date)
 
 final_dataframe <- bind_rows(warm_season_matched_data_blocks_edited, data_aggregate_warm)
 
-# final_dataframe <- final_dataframe %>%
-#    mutate(Year = year(Date)) %>%
-#    filter(Year >= 2018 & Year <= 2021) %>%
-#    select(-Year)
-
-# make the rows go in chronological order 
+# make the rows go in chronological order
 final_dataframe <- final_dataframe %>%
   arrange(Date)
 
-data = final_dataframe
+data <- final_dataframe
 
 # adding a column to the dataframe for each lag
 data <- data %>%
@@ -440,14 +294,6 @@ data <- data %>%
     lag4 = lag(MeanTemperature, 4),
     lag5 = lag(MeanTemperature, 5),
     lag6 = lag(MeanTemperature, 6)
-    # lag7 = lag(MeanTemperature, 7),
-    # lag8 = lag(MeanTemperature, 8),
-    # lag9 = lag(MeanTemperature, 9),
-    # lag10 = lag(MeanTemperature, 10),
-    # lag11 = lag(MeanTemperature, 11),
-    # lag12 = lag(MeanTemperature, 12),
-    # lag13 = lag(MeanTemperature, 13),
-    # lag14 = lag(MeanTemperature, 14)
   ) %>%
   ungroup()
 
@@ -461,63 +307,62 @@ head(Qdata, 100)
 
 # creating a crossbasis matrix. "bs" is a b-spline basis for polynomial splines
 # not sure if I should use "bs" degree=2 or if I should use "ns"
-range <- range(data$MeanTemperature,na.rm=T)
-nknots<-4
-nlagknots<-2
-ktemp <- range[1] + (range[2]-range[1])/(nknots+1)*1:nknots
-klag<-exp((log(6))/(nlagknots+2)*1:nlagknots)
+range <- range(data$MeanTemperature, na.rm = T)
+nknots <- 4
+nlagknots <- 2
+ktemp <- range[1] + (range[2] - range[1]) / (nknots + 1) * 1:nknots
+klag <- exp((log(6)) / (nlagknots + 2) * 1:nlagknots)
 # cbnest = crossbasis(Qdata, lag=14, argvar = list("ns", df=5), arglag=list(fun="ns", knots=klag, df=4))
 # temperature knots here are making last plot weird
-cbnest = crossbasis(Qdata, lag=6, argvar = list("ns", df=4), arglag=list(fun="ns", knots=klag), compare="median")
-#cbnest = crossbasis(Qdata, lag=14, argvar = list("bs", degree=2, df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
+cbnest <- crossbasis(Qdata, lag = 6, argvar = list("ns", df = 4), arglag = list(fun = "ns", knots = klag), compare = "median")
+# cbnest = crossbasis(Qdata, lag=14, argvar = list("bs", degree=2, df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
 
 # regression model
-mnest <- clogit(binary~ cbnest + strata(uniqueID), data, method = "exact")
+mnest <- clogit(binary ~ cbnest + strata(uniqueID), data, method = "exact")
 # took  + ns(MeanTemperature, df = 3), is having it in there double-fitting for temp?
 
 # predicting specific effect summaries
-cenvalue=median(data$MeanTemperature)
-range=range(data$MeanTemperature)
-pnest <- crosspred(cbnest, mnest, cen=cenvalue, at=4:33)
+cenvalue <- median(data$MeanTemperature)
+range <- range(data$MeanTemperature)
+pnest <- crosspred(cbnest, mnest, cen = cenvalue, at = 4:33)
 
-# plotting 
-plot(pnest, zlab="OR", xlab="Temperature", ylab="Lag (days)")
-plot(pnest, var=26, ylab="OR for Temperature x", xlab="Lag (days)", xlim=c(0,6))
-plot(pnest, lag=1, ylab="OR at lag x", xlab="Temperature")
+# plotting
+plot(pnest, zlab = "OR", xlab = "Temperature", ylab = "Lag (days)")
+plot(pnest, var = 26, ylab = "OR for Temperature x", xlab = "Lag (days)", xlim = c(0, 6))
+plot(pnest, lag = 1, ylab = "OR at lag x", xlab = "Temperature")
 
 # checking the AIC
-models = list(mnest)
+models <- list(mnest)
 aictab(cand.set = models)
-
 ```
 
 ```{r}
-# warm season 
+# warm season
 # short sept
 # Heat Index
 # opioid contibuting == yes
 
-warm_season_matched_data_blocks_edited = warm_season_matched_data_blocks %>%
+warm_season_matched_data_blocks_edited <- warm_season_matched_data_blocks %>%
   filter(block %in% c(1, 2, 3, 4, 5, 6, 7))
 
 warm_season_matched_data_blocks_edited <- warm_season_matched_data_blocks_edited %>%
-                    filter(opioid_contributing == "yes")
+  filter(opioid_contributing == "yes")
 
-warm_season_matched_data_blocks_edited$Date = as.Date(warm_season_matched_data_blocks_edited$Date)
+warm_season_matched_data_blocks_edited$Date <- as.Date(warm_season_matched_data_blocks_edited$Date)
 
 final_dataframe <- bind_rows(warm_season_matched_data_blocks_edited, data_aggregate)
 
 final_dataframe <- final_dataframe %>%
-   mutate(Year = year(Date)) %>%
-   filter(Year >= 2012 & Year <= 2022) %>%
-   dplyr::select(-Year)
+  mutate(Year = year(Date)) %>%
+  filter(Year >= 2012 & Year <= 2022) %>%
+  dplyr::select(-Year)
 
 
-# make the rows go in chronological order 
+# make the rows go in chronological order
 final_dataframe <- final_dataframe %>%
   arrange(Date)
 
-data = final_dataframe
+data <- final_dataframe
 
 # adding a column to the dataframe for each lag
 data <- data %>%
@@ -531,14 +376,6 @@ data <- data %>%
     lag4 = lag(HeatIndex, 4),
     lag5 = lag(HeatIndex, 5),
     lag6 = lag(HeatIndex, 6)
-    # lag7 = lag(HeatIndex, 7),
-    # lag8 = lag(HeatIndex, 8),
-    # lag9 = lag(HeatIndex, 9),
-    # lag10 = lag(HeatIndex, 10),
-    # lag11 = lag(HeatIndex, 11),
-    # lag12 = lag(HeatIndex, 12),
-    # lag13 = lag(HeatIndex, 13),
-    # lag14 = lag(HeatIndex, 14)
   ) %>%
   ungroup()
 
@@ -548,76 +385,69 @@ Qdata <- data %>%
 
 # creating a crossbasis matrix. "bs" is a b-spline basis for polynomial splines
 # not sure if I should use "bs" degree=2 or if I should use "ns"
-#cbnest = crossbasis(Qdata, lag=14, argvar = list("ns", df=3), arglag=list(fun="ns", knots=c(4,4), intercept=F))
-range <- range(data$HeatIndex,na.rm=T)
-nknots<-4
-nlagknots<-2
-ktemp <- range[1] + (range[2]-range[1])/(nknots+1)*1:nknots
-klag<-exp((log(6))/(nlagknots+2)*1:nlagknots)
-cbnest = crossbasis(Qdata, lag=6, argvar = list("ns", df=3), arglag=list(fun="ns", knots=klag), compare="median")
-#cbnest = crossbasis(Qdata, lag=14, argvar = list("bs", degree=2, df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
+# cbnest = crossbasis(Qdata, lag=14, argvar = list("ns", df=3), arglag=list(fun="ns", knots=c(4,4), intercept=F))
+range <- range(data$HeatIndex, na.rm = T)
+nknots <- 4
+nlagknots <- 2
+ktemp <- range[1] + (range[2] - range[1]) / (nknots + 1) * 1:nknots
+klag <- exp((log(6)) / (nlagknots + 2) * 1:nlagknots)
+cbnest <- crossbasis(Qdata, lag = 6, argvar = list("ns", df = 3), arglag = list(fun = "ns", knots = klag), compare = "median")
+# cbnest = crossbasis(Qdata, lag=14, argvar = list("bs", degree=2, df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
 
 # regression model
-mnest <- clogit(binary~cbnest + strata(uniqueID), data, method = "exact")
+mnest <- clogit(binary ~ cbnest + strata(uniqueID), data, method = "exact")
 
 # predicting specific effect summaries
-cenvalue=median(data$HeatIndex)
-range=range(warm_season_matched_data_blocks$HeatIndex)
-pnest <- crosspred(cbnest, mnest, cen=cenvalue, at=60:120, cumul=TRUE)
+cenvalue <- median(data$HeatIndex)
+range <- range(warm_season_matched_data_blocks$HeatIndex)
+pnest <- crosspred(cbnest, mnest, cen = cenvalue, at = 60:120, cumul = TRUE)
 
-# plotting 
-plot(pnest, zlab="OR", xlab="Heat Index", ylab="Lag (days)")
-plot(pnest, var=110, ylab="OR for Heat Index x", xlab="Lag (days)", xlim=c(0,6))
+# plotting
+plot(pnest, zlab = "OR", xlab = "Heat Index", ylab = "Lag (days)")
+plot(pnest, var = 110, ylab = "OR for Heat Index x", xlab = "Lag (days)", xlim = c(0, 6))
 
 
-plot(pnest, lag =0, ylab = "Odds Ratio", xlab = "Heat Index", col = "brown2")
+plot(pnest, lag = 0, ylab = "Odds Ratio", xlab = "Heat Index", col = "brown2")
 title(main = "Warm Season Odds Ratio of Fatal Opioid Overdose\n Same-Day Heat Index\n(2000-2022)")
 
 # checking AIC
-models = list(mnest)
+models <- list(mnest)
 aictab(cand.set = models)
 
 
 # # Open a PDF device
 # pdf("~/Thesis Work/Thesis Files/pdfs/warm_season_heat_index_overall_lag0.pdf")
-# 
+#
 # # Plot the data
 # plot(pnest, lag = 0, ylab = "Odds Ratio", xlab = "Heat Index", col = "brown2")
 # title(main = "Warm Season Odds Ratio of Fatal Opioid Overdose\n Same-Day Heat Index\n(2000-2022)")
-# 
+#
 # # Close the PDF device
 # dev.off()
-
 ```
 
 ```{r}
-# warm season 
+# warm season
 # short sept
 # Heat Index
 # opioid contibuting == yes
 # other variables to adjust
 
-warm_season_matched_data_blocks_edited = warm_season_matched_data_blocks %>%
+warm_season_matched_data_blocks_edited <- warm_season_matched_data_blocks %>%
   filter(block %in% c(1, 2, 3, 4, 5, 6, 7))
 
 warm_season_matched_data_blocks_edited <- warm_season_matched_data_blocks_edited %>%
-                    filter(opioid_contributing == "yes")
+  filter(opioid_contributing == "yes")
 
-# warm_season_matched_data_blocks_edited <- warm_season_matched_data_blocks_edited %>%
-#                     filter(cocaine_contributing == "yes")
-# 
-# warm_season_matched_data_blocks_edited <- warm_season_matched_data_blocks_edited %>%
-#                     filter(other_stimi_contributing == "no")
-
-warm_season_matched_data_blocks_edited$Date = as.Date(warm_season_matched_data_blocks_edited$Date)
+warm_season_matched_data_blocks_edited$Date <- as.Date(warm_season_matched_data_blocks_edited$Date)
 
 final_dataframe <- bind_rows(warm_season_matched_data_blocks_edited, data_aggregate)
 
-# make the rows go in chronological order 
+# make the rows go in chronological order
 final_dataframe <- final_dataframe %>%
   arrange(Date)
 
-data = final_dataframe
+data <- final_dataframe
 
 # adding a column to the dataframe for each lag
 data <- data %>%
@@ -646,53 +476,49 @@ data <- data %>%
 Qdata <- data %>%
   select(lag0:lag14)
 
-head(Qdata, 100)
-
 # creating a crossbasis matrix. "bs" is a b-spline basis for polynomial splines
 # not sure if I should use "bs" degree=2 or if I should use "ns"
-cbnest = crossbasis(Qdata, lag=14, argvar = list("ns", df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
-#cbnest = crossbasis(Qdata, lag=14, argvar = list("bs", degree=2, df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
+cbnest <- crossbasis(Qdata, lag = 14, argvar = list("ns", df = 3), arglag = list(fun = "ns", knots = c(5, 5), intercept = F))
+# cbnest = crossbasis(Qdata, lag=14, argvar = list("bs", degree=2, df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
 
 # regression model
-mnest <- clogit(binary~cbnest + ns(HeatIndex, df = 3) + strata(uniqueID), data, method = "exact")
+mnest <- clogit(binary ~ cbnest + ns(HeatIndex, df = 3) + strata(uniqueID), data, method = "exact")
 
 # predicting specific effect summaries
-pnest <- crosspred(cbnest, mnest, cen=80, at=47:120, cumul=TRUE)
+pnest <- crosspred(cbnest, mnest, cen = 80, at = 47:120, cumul = TRUE)
 
-# plotting 
-plot(pnest, zlab="OR", xlab="Temperature", ylab="Lag (days)")
-plot(pnest, var=115, ylab="OR for Temperature x", xlab="Lag (days)", xlim=c(0,14))
-plot(pnest, lag=5, ylab="OR at lag x", xlab="Temperature")
-
-
+# plotting
+plot(pnest, zlab = "OR", xlab = "Temperature", ylab = "Lag (days)")
+plot(pnest, var = 115, ylab = "OR for Temperature x", xlab = "Lag (days)", xlim = c(0, 14))
+plot(pnest, lag = 5, ylab = "OR at lag x", xlab = "Temperature")
 ```
 
 ```{r}
-# cool season 
+# cool season
 # long feb
 # min temp
 # opioid contibuting == yes
 
-cool_season_matched_data_blocks_edited = cool_season_matched_data_blocks %>%
+cool_season_matched_data_blocks_edited <- cool_season_matched_data_blocks %>%
   filter(block %in% c(1, 2, 3, 4, 5))
 
 cool_season_matched_data_blocks_edited <- cool_season_matched_data_blocks_edited %>%
-                    filter(opioid_contributing == "yes")
+  filter(opioid_contributing == "yes")
 
-cool_season_matched_data_blocks_edited$Date = as.Date(cool_season_matched_data_blocks_edited$Date)
+cool_season_matched_data_blocks_edited$Date <- as.Date(cool_season_matched_data_blocks_edited$Date)
 
 final_dataframe <- bind_rows(cool_season_matched_data_blocks_edited, data_aggregate)
 
 final_dataframe <- final_dataframe %>%
-   mutate(Year = year(Date)) %>%
-   filter(Year >= 2000 & Year <= 2022) %>%
-   select(-Year)
+  mutate(Year = year(Date)) %>%
+  filter(Year >= 2000 & Year <= 2022) %>%
+  select(-Year)
 
-# make the rows go in chronological order 
+# make the rows go in chronological order
 final_dataframe <- final_dataframe %>%
   arrange(Date)
 
-data = final_dataframe
+data <- final_dataframe
 
 # adding a column to the dataframe for each lag
 data <- data %>%
@@ -706,14 +532,6 @@ data <- data %>%
     lag4 = lag(MinTemperature, 4),
     lag5 = lag(MinTemperature, 5),
     lag6 = lag(MinTemperature, 6)
-    # lag7 = lag(MinTemperature, 7),
-    # lag8 = lag(MinTemperature, 8),
-    # lag9 = lag(MinTemperature, 9),
-    # lag10 = lag(MinTemperature, 10),
-    # lag11 = lag(MinTemperature, 11),
-    # lag12 = lag(MinTemperature, 12),
-    # lag13 = lag(MinTemperature, 13),
-    # lag14 = lag(MinTemperature, 14)
   ) %>%
   ungroup()
 
@@ -725,41 +543,41 @@ head(Qdata, 100)
 
 # creating a crossbasis matrix. "bs" is a b-spline basis for polynomial splines
 # not sure if I should use "bs" degree=2 or if I should use "ns"
-#cbnest = crossbasis(Qdata, lag=14, argvar = list("ns", df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
-#cbnest = crossbasis(Qdata, lag=14, argvar = list("bs", degree=2, df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
-range <- range(data$MinTemperature,na.rm=T)
-nknots<-4
-nlagknots<-2
-ktemp <- range[1] + (range[2]-range[1])/(nknots+1)*1:nknots
-klag<-exp((log(6))/(nlagknots+2)*1:nlagknots)
-cbnest = crossbasis(Qdata, lag=6, argvar = list("ns", df=4), arglag=list(fun="ns", knots=klag), compare="median")
+# cbnest = crossbasis(Qdata, lag=14, argvar = list("ns", df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
+# cbnest = crossbasis(Qdata, lag=14, argvar = list("bs", degree=2, df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
+range <- range(data$MinTemperature, na.rm = T)
+nknots <- 4
+nlagknots <- 2
+ktemp <- range[1] + (range[2] - range[1]) / (nknots + 1) * 1:nknots
+klag <- exp((log(6)) / (nlagknots + 2) * 1:nlagknots)
+cbnest <- crossbasis(Qdata, lag = 6, argvar = list("ns", df = 4), arglag = list(fun = "ns", knots = klag), compare = "median")
 
 
 # regression model
-mnest <- clogit(binary~cbnest + strata(uniqueID), data, method = "exact")
+mnest <- clogit(binary ~ cbnest + strata(uniqueID), data, method = "exact")
 
 # predicting specific effect summaries
-pnest <- crosspred(cbnest, mnest, cen=0, at=-20:20, cumul=TRUE)
+pnest <- crosspred(cbnest, mnest, cen = 0, at = -20:20, cumul = TRUE)
 
-# plotting 
-plot(pnest, zlab="OR", xlab="Temperature", ylab="Lag (days)")
-plot(pnest, var=-10, ylab="OR for Temperature xF", xlab="Lag (days)", xlim=c(0,6))
-plot(pnest, lag=2, ylab="OR at lag x", xlab="Temperature")
-{plot(pnest, lag = 2, ylab = "Odds Ratio", xlab = "Mimum Temperature (C)", col = "blue2")
-title(main = "Wave One: Cool Season Odds Ratio of Fatal Opioid Overdose\nFollowing a Cumulative Two-Day Lag Of Minumum Temperature\n(2000-2011)")}
+# plotting
+plot(pnest, zlab = "OR", xlab = "Temperature", ylab = "Lag (days)")
+plot(pnest, var = -10, ylab = "OR for Temperature xF", xlab = "Lag (days)", xlim = c(0, 6))
+plot(pnest, lag = 2, ylab = "OR at lag x", xlab = "Temperature")
+{
+  plot(pnest, lag = 2, ylab = "Odds Ratio", xlab = "Mimum Temperature (C)", col = "blue2")
+  title(main = "Wave One: Cool Season Odds Ratio of Fatal Opioid Overdose\nFollowing a Cumulative Two-Day Lag Of Minumum Temperature\n(2000-2011)")
+}
 
 
 # # Open a PDF device
 # pdf("~/Thesis Work/Thesis Files/pdfs/cool_season_overall_lag2.pdf")
-# 
+#
 # # Plot the data
 # plot(pnest, lag = 1, ylab = "Odds Ratio", xlab = "Mimum Temperature (C)", col = "blue2")
 # title(main = "Cool Season Odds Ratio of Fatal Opioid Overdose\nFollowing a Cumulative Two-Day Lag Of Minumum Temperature\n(2000-2022)")
-# 
+#
 # # Close the PDF device
 # dev.off()
-
-
 ```
 
 
@@ -769,35 +587,30 @@ title(main = "Wave One: Cool Season Odds Ratio of Fatal Opioid Overdose\nFollowi
 # opioid contibuting == yes
 
 cool_season_matched_data_blocks_edited <- cool_season_matched_data_blocks %>%
-   mutate(Year = year(Date)) %>%
-   filter(Year >= 2012 & Year <= 2022) %>%
-   dplyr::select(-Year)
+  mutate(Year = year(Date)) %>%
+  filter(Year >= 2012 & Year <= 2022) %>%
+  dplyr::select(-Year)
 
-cool_season_matched_data_blocks_edited = cool_season_matched_data_blocks_edited %>%
+cool_season_matched_data_blocks_edited <- cool_season_matched_data_blocks_edited %>%
   filter(block %in% c(1, 2, 3, 4, 5))
 
 cool_season_matched_data_blocks_edited <- cool_season_matched_data_blocks_edited %>%
-                    filter(opioid_contributing == "yes")
+  filter(opioid_contributing == "yes")
 
-# data_aggregate_warm <- data_aggregate %>%
-#   mutate(Month = month(Date)) %>%
-#   filter(Month >= 4 & Month <= 10) %>%
-#   dplyr::select(-Month)
-
-cool_season_matched_data_blocks_edited$Date = as.Date(cool_season_matched_data_blocks_edited$Date)
+cool_season_matched_data_blocks_edited$Date <- as.Date(cool_season_matched_data_blocks_edited$Date)
 
 final_dataframe <- bind_rows(cool_season_matched_data_blocks_edited, data_aggregate)
 
 final_dataframe <- final_dataframe %>%
-   mutate(Year = year(Date)) %>%
-   filter(Year >= 2012 & Year <= 2022) %>%
-   dplyr::select(-Year)
+  mutate(Year = year(Date)) %>%
+  filter(Year >= 2012 & Year <= 2022) %>%
+  dplyr::select(-Year)
 
-# make the rows go in chronological order 
+# make the rows go in chronological order
 final_dataframe <- final_dataframe %>%
   arrange(Date)
 
-data = final_dataframe
+data <- final_dataframe
 
 head(final_dataframe, 1000)
 
@@ -813,14 +626,6 @@ data <- data %>%
     lag4 = lag(RaceWeightedMinTemp, 4),
     lag5 = lag(RaceWeightedMinTemp, 5),
     lag6 = lag(RaceWeightedMinTemp, 6)
-    # lag7 = lag(MaxTemperature, 7),
-    # lag8 = lag(MaxTemperature, 8),
-    # lag9 = lag(MaxTemperature, 9),
-    # lag10 = lag(MaxTemperature, 10),
-    # lag11 = lag(MaxTemperature, 11),
-    # lag12 = lag(MaxTemperature, 12),
-    # lag13 = lag(MaxTemperature, 13),
-    # lag14 = lag(MaxTemperature, 14)
   ) %>%
   ungroup()
 
@@ -832,73 +637,71 @@ head(Qdata, 100)
 
 # creating a crossbasis matrix. "bs" is a b-spline basis for polynomial splines
 # not sure if I should use "bs" degree=2 or if I should use "ns"
-range <- range(data$RaceWeightedMinTemp,na.rm=T)
-nknots<-4
-nlagknots<-2
-ktemp <- range[1] + (range[2]-range[1])/(nknots+1)*1:nknots
-klag<-exp((log(6))/(nlagknots+2)*1:nlagknots)
+range <- range(data$RaceWeightedMinTemp, na.rm = T)
+nknots <- 4
+nlagknots <- 2
+ktemp <- range[1] + (range[2] - range[1]) / (nknots + 1) * 1:nknots
+klag <- exp((log(6)) / (nlagknots + 2) * 1:nlagknots)
 # cbnest = crossbasis(Qdata, lag=14, argvar = list("ns", df=5), arglag=list(fun="ns", knots=klag, df=4))
 # temperature knots here are making last plot weird
-cbnest = crossbasis(Qdata, lag=6, argvar = list("ns", df=3), arglag=list(fun="ns", knots=klag), compare="median")
-#cbnest = crossbasis(Qdata, lag=14, argvar = list("bs", degree=2, df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
+cbnest <- crossbasis(Qdata, lag = 6, argvar = list("ns", df = 3), arglag = list(fun = "ns", knots = klag), compare = "median")
+# cbnest = crossbasis(Qdata, lag=14, argvar = list("bs", degree=2, df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
 
 # regression model
-mnest <- clogit(binary~ cbnest + strata(uniqueID), data, method = "exact")
+mnest <- clogit(binary ~ cbnest + strata(uniqueID), data, method = "exact")
 # took  + ns(MeanTemperature, df = 3), is having it in there double-fitting for temp?
 # + ns(RelHum, df = 5)
 
 # predicting specific effect summaries
-cenvalue=median(data$RaceWeightedMinTemp, na.rm=TRUE)
-range=range(data$RaceWeightedMinTemp, na.rm=TRUE)
-pnest <- crosspred(cbnest, mnest, cen=cenvalue, at=-20:20, cumul=TRUE)
+cenvalue <- median(data$RaceWeightedMinTemp, na.rm = TRUE)
+range <- range(data$RaceWeightedMinTemp, na.rm = TRUE)
+pnest <- crosspred(cbnest, mnest, cen = cenvalue, at = -20:20, cumul = TRUE)
 
 
-# plotting 
-plot(pnest, zlab="OR", xlab="Temperature", ylab="Lag (days)")
-plot(pnest, var=35, ylab="OR for Temperature X", xlab="Lag (days)", xlim=c(0,6))
+# plotting
+plot(pnest, zlab = "OR", xlab = "Temperature", ylab = "Lag (days)")
+plot(pnest, var = 35, ylab = "OR for Temperature X", xlab = "Lag (days)", xlim = c(0, 6))
 plot(pnest, lag = 2, ylab = "Odds Ratio", xlab = "Minimum Temperature (C)", col = "blue2")
 title(main = "Wave Two: Race-Weighted Temperature Exposure \nCool Season Odds Ratio of Fatal Opioid Overdose\nFollowing a Cumulative Two-Day Lag Of Minimum Temperature\n(2012-2022)")
 
 # checking AIC
-models = list(mnest)
+models <- list(mnest)
 aictab(cand.set = models)
 
 
 # # Open a PDF device
 # pdf("~/Thesis Work/Thesis Files/pdfs/warm_season_wave2_lag2.pdf")
-# 
+#
 # # Plot the data
 # plot(pnest, lag = 2, ylab = "Odds Ratio", xlab = "Maximum Temperature (C)", col = "brown2")
 # title(main = "Wave Two: Warm Season Odds Ratio of Fatal Opioid Overdose\nFollowing a Cumulative Two-Day Lag Of Maximum Temperature\n(2012-2022)")
-# 
+#
 # # Close the PDF device
 # dev.off()
-
-
 ```
 
 ```{r}
-# cool season 
+# cool season
 # long feb
 # mean temp
 # opioid contibuting == yes
 
 
-cool_season_matched_data_blocks_edited = cool_season_matched_data_blocks %>%
+cool_season_matched_data_blocks_edited <- cool_season_matched_data_blocks %>%
   filter(block %in% c(1, 2, 3, 4, 5))
 
 cool_season_matched_data_blocks_edited <- cool_season_matched_data_blocks_edited %>%
-                    filter(opioid_contributing == "yes")
+  filter(opioid_contributing == "yes")
 
-cool_season_matched_data_blocks_edited$Date = as.Date(cool_season_matched_data_blocks_edited$Date)
+cool_season_matched_data_blocks_edited$Date <- as.Date(cool_season_matched_data_blocks_edited$Date)
 
 final_dataframe <- bind_rows(cool_season_matched_data_blocks_edited, data_aggregate)
 
-# make the rows go in chronological order 
+# make the rows go in chronological order
 final_dataframe <- final_dataframe %>%
   arrange(Date)
 
-data = final_dataframe
+data <- final_dataframe
 
 # adding a column to the dataframe for each lag
 data <- data %>%
@@ -931,32 +734,30 @@ head(Qdata, 100)
 
 # creating a crossbasis matrix. "bs" is a b-spline basis for polynomial splines
 # not sure if I should use "bs" degree=2 or if I should use "ns"
-cbnest = crossbasis(Qdata, lag=14, argvar = list("ns", df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
-#cbnest = crossbasis(Qdata, lag=14, argvar = list("bs", degree=2, df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
+cbnest <- crossbasis(Qdata, lag = 14, argvar = list("ns", df = 3), arglag = list(fun = "ns", knots = c(5, 5), intercept = F))
+# cbnest = crossbasis(Qdata, lag=14, argvar = list("bs", degree=2, df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
 
 # regression model
-mnest <- clogit(binary~cbnest + ns(MeanTemperature, df = 3) + strata(uniqueID), data, method = "exact")
+mnest <- clogit(binary ~ cbnest + ns(MeanTemperature, df = 3) + strata(uniqueID), data, method = "exact")
 
 # predicting specific effect summaries
-pnest <- crosspred(cbnest, mnest, cen=0, at=-10:50, cumul=TRUE)
+pnest <- crosspred(cbnest, mnest, cen = 0, at = -10:50, cumul = TRUE)
 
-# plotting 
-plot(pnest, zlab="OR", xlab="Temperature", ylab="Lag (days)")
-plot(pnest, var=1, ylab="OR for Temperature 32F", xlab="Lag (days)", xlim=c(0,14))
-plot(pnest, lag=3, ylab="OR at lag x", xlab="Temperature")
-
-
+# plotting
+plot(pnest, zlab = "OR", xlab = "Temperature", ylab = "Lag (days)")
+plot(pnest, var = 1, ylab = "OR for Temperature 32F", xlab = "Lag (days)", xlim = c(0, 14))
+plot(pnest, lag = 3, ylab = "OR at lag x", xlab = "Temperature")
 ```
 
 ```{r}
 # warm season short sept dlnm heat index with stimi
 # cutting september short
-warm_season_matched_data_blocks = warm_season_matched_data_blocks %>%
+warm_season_matched_data_blocks <- warm_season_matched_data_blocks %>%
   filter(block %in% c(1, 2, 3, 4, 5, 6, 7))
 
 final_dataframe <- bind_rows(warm_season_matched_data_blocks, data_aggregate)
 
-# make the rows go in chronological order 
+# make the rows go in chronological order
 final_dataframe <- final_dataframe %>%
   arrange(Date)
 
@@ -965,7 +766,7 @@ head(final_dataframe, 1000)
 
 # walking through a more complex DLNM according to Gasp. paper
 
-data = final_dataframe
+data <- final_dataframe
 
 # adding a column to the dataframe for each lag
 data <- data %>%
@@ -1002,21 +803,19 @@ head(Qdata, 100)
 
 # creating a crossbasis matrix. "bs" is a b-spline basis for polynomial splines
 # not sure if I should use "bs" degree=2 or if I should use "ns"
-cbnest = crossbasis(Qdata, lag=14, argvar = list("ns", df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
-#cbnest = crossbasis(Qdata, lag=14, argvar = list("bs", degree=2, df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
+cbnest <- crossbasis(Qdata, lag = 14, argvar = list("ns", df = 3), arglag = list(fun = "ns", knots = c(5, 5), intercept = F))
+# cbnest = crossbasis(Qdata, lag=14, argvar = list("bs", degree=2, df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
 
 # regression model
-mnest <- clogit(binary~cbnest + ns(HeatIndex, df = 3) + strata(uniqueID), data, method = "exact")
+mnest <- clogit(binary ~ cbnest + ns(HeatIndex, df = 3) + strata(uniqueID), data, method = "exact")
 
 # predicting specific effect summaries
-pnest <- crosspred(cbnest, mnest, cen=0, at=60:170, cumul=TRUE)
+pnest <- crosspred(cbnest, mnest, cen = 0, at = 60:170, cumul = TRUE)
 
-# plotting 
-plot(pnest, zlab="OR", xlab="HeatIndex", ylab="Lag (days)")
-plot(pnest, var=120, ylab="OR for HeatIndex 120", xlab="Lag (days)", xlim=c(0,14))
-plot(pnest, lag=11, ylab="OR at lag 11", xlab="HeatIndex")
-
-
+# plotting
+plot(pnest, zlab = "OR", xlab = "HeatIndex", ylab = "Lag (days)")
+plot(pnest, var = 120, ylab = "OR for HeatIndex 120", xlab = "Lag (days)", xlim = c(0, 14))
+plot(pnest, lag = 11, ylab = "OR at lag 11", xlab = "HeatIndex")
 ```
 
 ```{r}
@@ -1024,21 +823,22 @@ plot(pnest, lag=11, ylab="OR at lag 11", xlab="HeatIndex")
 
 # Perform left join
 warm_season_matched_data_blocks <- left_join(warm_season_matched_data_blocks, death_data_all_stimi %>%
-                             select(uniqueID, cocaine_contributing, other_stimi_contributing),
-                           by = "uniqueID")
+  select(uniqueID, cocaine_contributing, other_stimi_contributing),
+by = "uniqueID"
+)
 
 # Remove rows with "yes" in either cocaine_contributing or other_stimi_contributing columns
 warm_season_matched_data_blocks <- warm_season_matched_data_blocks %>%
   filter(cocaine_contributing != "yes" & other_stimi_contributing != "yes")
 
-warm_season_matched_data_blocks = warm_season_matched_data_blocks %>%
+warm_season_matched_data_blocks <- warm_season_matched_data_blocks %>%
   filter(block %in% c(1, 2, 3, 4, 5, 6, 7))
 
 head(warm_season_matched_data_blocks)
 
 final_dataframe <- bind_rows(warm_season_matched_data_blocks, data_aggregate)
 
-# make the rows go in chronological order 
+# make the rows go in chronological order
 final_dataframe <- final_dataframe %>%
   arrange(Date)
 
@@ -1047,7 +847,7 @@ head(final_dataframe, 1000)
 
 # walking through a more complex DLNM according to Gasp. paper
 
-data = final_dataframe
+data <- final_dataframe
 
 # adding a column to the dataframe for each lag
 data <- data %>%
@@ -1080,38 +880,32 @@ data <- data %>%
 Qdata <- data %>%
   select(lag0:lag14)
 
-head(Qdata, 100)
-
 # creating a crossbasis matrix. "bs" is a b-spline basis for polynomial splines
 # not sure if I should use "bs" degree=2 or if I should use "ns"
-cbnest = crossbasis(Qdata, lag=14, argvar = list("ns", df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
-#cbnest = crossbasis(Qdata, lag=14, argvar = list("bs", degree=2, df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
+cbnest <- crossbasis(Qdata, lag = 14, argvar = list("ns", df = 3), arglag = list(fun = "ns", knots = c(5, 5), intercept = F))
+# cbnest = crossbasis(Qdata, lag=14, argvar = list("bs", degree=2, df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
 
 # regression model
-mnest <- clogit(binary~cbnest + ns(MaxTemperature, df = 3) + strata(uniqueID), data, method = "exact")
+mnest <- clogit(binary ~ cbnest + ns(MaxTemperature, df = 3) + strata(uniqueID), data, method = "exact")
 
 # predicting specific effect summaries
-pnest <- crosspred(cbnest, mnest, cen=0, at=-10:50, cumul=TRUE)
+pnest <- crosspred(cbnest, mnest, cen = 0, at = -10:50, cumul = TRUE)
 
-# plotting 
-plot(pnest, zlab="OR", xlab="Temperature", ylab="Lag (days)")
-plot(pnest, var=32, ylab="OR for Temperature 32", xlab="Lag (days)", xlim=c(0,14))
-plot(pnest, lag=5, ylab="OR at lag 5", xlab="Temperature")
-
-
-
-
+# plotting
+plot(pnest, zlab = "OR", xlab = "Temperature", ylab = "Lag (days)")
+plot(pnest, var = 32, ylab = "OR for Temperature 32", xlab = "Lag (days)", xlim = c(0, 14))
+plot(pnest, lag = 5, ylab = "OR at lag 5", xlab = "Temperature")
 ```
 
 ```{r}
 # warm season short sept dlnm heat index NO stimi
 # cutting september short
-warm_season_matched_data_blocks = warm_season_matched_data_blocks %>%
+warm_season_matched_data_blocks <- warm_season_matched_data_blocks %>%
   filter(block %in% c(1, 2, 3, 4, 5, 6, 7))
 
 final_dataframe <- bind_rows(warm_season_matched_data_blocks, data_aggregate)
 
-# make the rows go in chronological order 
+# make the rows go in chronological order
 final_dataframe <- final_dataframe %>%
   arrange(Date)
 
@@ -1120,7 +914,7 @@ head(final_dataframe, 1000)
 
 # walking through a more complex DLNM according to Gasp. paper
 
-data = final_dataframe
+data <- final_dataframe
 
 # adding a column to the dataframe for each lag
 data <- data %>%
@@ -1157,19 +951,19 @@ head(Qdata, 100)
 
 # creating a crossbasis matrix. "bs" is a b-spline basis for polynomial splines
 # not sure if I should use "bs" degree=2 or if I should use "ns"
-cbnest = crossbasis(Qdata, lag=14, argvar = list("ns", df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
-#cbnest = crossbasis(Qdata, lag=14, argvar = list("bs", degree=2, df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
+cbnest <- crossbasis(Qdata, lag = 14, argvar = list("ns", df = 3), arglag = list(fun = "ns", knots = c(5, 5), intercept = F))
+# cbnest = crossbasis(Qdata, lag=14, argvar = list("bs", degree=2, df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
 
 # regression model
-mnest <- clogit(binary~cbnest + ns(HeatIndex, df = 3) + strata(uniqueID), data, method = "exact")
+mnest <- clogit(binary ~ cbnest + ns(HeatIndex, df = 3) + strata(uniqueID), data, method = "exact")
 
 # predicting specific effect summaries
-pnest <- crosspred(cbnest, mnest, cen=0, at=60:170, cumul=TRUE)
+pnest <- crosspred(cbnest, mnest, cen = 0, at = 60:170, cumul = TRUE)
 
-# plotting 
-plot(pnest, zlab="OR", xlab="HeatIndex", ylab="Lag (days)")
-plot(pnest, var=120, ylab="OR for HeatIndex x", xlab="Lag (days)", xlim=c(0,14))
-plot(pnest, lag=12, ylab="OR at lag x", xlab="HeatIndex")
+# plotting
+plot(pnest, zlab = "OR", xlab = "HeatIndex", ylab = "Lag (days)")
+plot(pnest, var = 120, ylab = "OR for HeatIndex x", xlab = "Lag (days)", xlim = c(0, 14))
+plot(pnest, lag = 12, ylab = "OR at lag x", xlab = "HeatIndex")
 
 head(warm_season_matched_data_blocks$HeatIndex)
 
@@ -1178,7 +972,6 @@ warm_season_matched_data_blocks <- warm_season_matched_data_blocks %>%
   arrange(desc(HeatIndex))
 
 head(warm_season_matched_data_blocks, 200)
-
 ```
 
 
@@ -1186,7 +979,7 @@ head(warm_season_matched_data_blocks, 200)
 # for cold season
 
 # cutting september short
-cool_season_matched_deaths_short_feb = read.csv("~/Thesis Work/Thesis Files/cool_season_matched_data_blocks_short_feb.csv")
+cool_season_matched_deaths_short_feb <- read.csv("~/Thesis Work/Thesis Files/cool_season_matched_data_blocks_short_feb.csv")
 
 head(cool_season_matched_deaths_short_feb)
 
@@ -1195,11 +988,11 @@ cool_season_matched_deaths_short_feb <- cool_season_matched_deaths_short_feb %>%
     binary = ifelse(case_control == "case", 1, 0)
   )
 
-cool_season_matched_deaths_short_feb$Date = as.Date(cool_season_matched_deaths_short_feb$Date)
+cool_season_matched_deaths_short_feb$Date <- as.Date(cool_season_matched_deaths_short_feb$Date)
 
 final_dataframe <- bind_rows(cool_season_matched_deaths_short_feb, data_aggregate)
 
-# make the rows go in chronological order 
+# make the rows go in chronological order
 final_dataframe <- final_dataframe %>%
   arrange(Date)
 
@@ -1208,7 +1001,7 @@ head(final_dataframe, 1000)
 
 # walking through a more complex DLNM according to Gasp. paper
 
-data = final_dataframe
+data <- final_dataframe
 
 # adding a column to the dataframe for each lag
 data <- data %>%
@@ -1245,22 +1038,19 @@ head(Qdata, 100)
 
 # creating a crossbasis matrix. "bs" is a b-spline basis for polynomial splines
 # not sure if I should use "bs" degree=2 or if I should use "ns"
-cbnest = crossbasis(Qdata, lag=14, argvar = list("ns", df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
-#cbnest = crossbasis(Qdata, lag=14, argvar = list("bs", degree=2, df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
+cbnest <- crossbasis(Qdata, lag = 14, argvar = list("ns", df = 3), arglag = list(fun = "ns", knots = c(5, 5), intercept = F))
+# cbnest = crossbasis(Qdata, lag=14, argvar = list("bs", degree=2, df=3), arglag=list(fun="ns", knots=c(5,5), intercept=F))
 
 # regression model
-mnest <- clogit(binary~cbnest + ns(MinTemperature, df = 3) + strata(uniqueID), data, method = "exact")
+mnest <- clogit(binary ~ cbnest + ns(MinTemperature, df = 3) + strata(uniqueID), data, method = "exact")
 
 # predicting specific effect summaries
-pnest <- crosspred(cbnest, mnest, cen=0, at=-10:50, cumul=TRUE)
+pnest <- crosspred(cbnest, mnest, cen = 0, at = -10:50, cumul = TRUE)
 
-# plotting 
-plot(pnest, zlab="OR", xlab="Temperature", ylab="Lag (days)")
-plot(pnest, var=-5, ylab="OR for Temperature -5C", xlab="Lag (days)", xlim=c(0,14))
-plot(pnest, lag=2, ylab="OR at lag 5", xlab="Temperature")
-
-
-
+# plotting
+plot(pnest, zlab = "OR", xlab = "Temperature", ylab = "Lag (days)")
+plot(pnest, var = -5, ylab = "OR for Temperature -5C", xlab = "Lag (days)", xlim = c(0, 14))
+plot(pnest, lag = 2, ylab = "OR at lag 5", xlab = "Temperature")
 ```
 
 ##### scratch below here
@@ -1271,18 +1061,19 @@ plot(pnest, lag=2, ylab="OR at lag 5", xlab="Temperature")
 # creating a cross-basis matrix
 # using mean temperature
 
-data = final_dataframe
+data <- final_dataframe
 head(data, 1000)
 
 range <- c(-50, 150)
-nknots<-4 # Number of knots for temperature
-nlagknots<-4 # Number of knots for lag
-ktemp <- range[1] + (range[2]-range[1])/(nknots+1)*1:nknots # Knots for temperature
-klag<-exp((log(15))/(nlagknots+2)*1:nlagknots) # Knots for lag
+nknots <- 4 # Number of knots for temperature
+nlagknots <- 4 # Number of knots for lag
+ktemp <- range[1] + (range[2] - range[1]) / (nknots + 1) * 1:nknots # Knots for temperature
+klag <- exp((log(15)) / (nlagknots + 2) * 1:nlagknots) # Knots for lag
 
-basis.temp <- crossbasis(data$MeanTemperature, lag = 15, vartype="ns", varknots=ktemp,
-cenvalue=median(data$MeanTemperature,na.rm=T), lagtype="ns", lagknots=klag,maxlag=15)
-
+basis.temp <- crossbasis(data$MeanTemperature,
+  lag = 15, vartype = "ns", varknots = ktemp,
+  cenvalue = median(data$MeanTemperature, na.rm = T), lagtype = "ns", lagknots = klag, maxlag = 15
+)
 ```
 
 ```{r}
@@ -1290,77 +1081,78 @@ cenvalue=median(data$MeanTemperature,na.rm=T), lagtype="ns", lagknots=klag,maxla
 # not sure what the parameters should be in this
 # should i take this term out? + ns(MeanTemperature, df = 5)
 
-model.month <- clogit(binary ~ basis.temp  + strata(uniqueID), data = data, method = "exact")
+model.month <- clogit(binary ~ basis.temp + strata(uniqueID), data = data, method = "exact")
 
 
 length(unique(data$uniqueID))
 
 # this model doesnt work because there are too many categories
 model.month <- clogit(binary ~ basis.temp + ns(MeanTemperature, df = 3) + as.factor(uniqueID) + as.factor(block), data = data, method = "exact")
-
-
 ```
 
 ```{r}
 # confused on how to do this
-pred.month <- crosspred(basis.temp, model.month, by=2)
+pred.month <- crosspred(basis.temp, model.month, by = 2)
 help("crosspred")
-
 ```
 
 ```{r}
+plot(pred.month, "3d", zlab = "Relative Risk", r = 90, d = 0.3, col = "red", xlab = "Temperature", main = "3D graphic for NC", expand = 0.6, lwd = 0.5)
 
-plot (pred.month,"3d",zlab="Relative Risk", r=90, d=0.3, col="red", xlab="Temperature", main="3D graphic for NC", expand=0.6,lwd=0.5)
-
-plot(pred.month,"overall", xlab="Temperature (°C)", ylab=" Relative Risk ",
-main="Overall effect of Temperature on Fatal Overdose\n between 1999-2921 for North Carolina")
-
+plot(pred.month, "overall",
+  xlab = "Temperature (°C)", ylab = " Relative Risk ",
+  main = "Overall effect of Temperature on Fatal Overdose\n between 1999-2921 for North Carolina"
+)
 ```
 
 ```{r}
-# trying another approach not working 
+# trying another approach not working
 
-cb1.temp <- crossbasis(data$MeanTemperature, lag=3, argvar=list(df=5),
-  arglag=list(fun="strata",breaks=1))
+cb1.temp <- crossbasis(data$MeanTemperature,
+  lag = 3, argvar = list(df = 5),
+  arglag = list(fun = "strata", breaks = 1)
+)
 
-model1 <- glm(binary ~ cb1.temp + ns(Date, 7*14) + uniqueID,
-  family=quasipoisson(), data)
+model1 <- glm(binary ~ cb1.temp + ns(Date, 7 * 14) + uniqueID,
+  family = quasipoisson(), data
+)
 
 
-cbnest <- crossbasis(data$MeanTemperature, lag = 15, vartype="ns", varknots=ktemp,
-cenvalue=median(data$MeanTemperature,na.rm=T), lagtype="ns", lagknots=klag,maxlag=15)
+cbnest <- crossbasis(data$MeanTemperature,
+  lag = 15, vartype = "ns", varknots = ktemp,
+  cenvalue = median(data$MeanTemperature, na.rm = T), lagtype = "ns", lagknots = klag, maxlag = 15
+)
 
 
 
 summary(cbnest)
-mnest <- clogit(binary~cbnest+strata(block), data)
-pnest <- crosspred(cbnest,mnest, cen=10, at=0:20*5)
+mnest <- clogit(binary ~ cbnest + strata(block), data)
+pnest <- crosspred(cbnest, mnest, cen = 10, at = 0:20 * 5)
 
 # bi-dimensional exposure-lag-response association
-plot(pnest, zlab="OR", xlab="Exposure", ylab="Lag (years)")
+plot(pnest, zlab = "OR", xlab = "Exposure", ylab = "Lag (years)")
 ```
 
 
 ```{r}
-
 # create the crossbasis object for temperature
-varknots <- equalknots(data$MeanTemperature,fun="bs",df=5,degree=2)
+varknots <- equalknots(data$MeanTemperature, fun = "bs", df = 5, degree = 2)
 lagknots <- logknots(30, 3)
-cb3.temp <- crossbasis(data$MeanTemperature, lag=30, argvar=list(fun="bs",
-  knots=varknots), arglag=list(knots=lagknots))
+cb3.temp <- crossbasis(data$MeanTemperature, lag = 30, argvar = list(
+  fun = "bs",
+  knots = varknots
+), arglag = list(knots = lagknots))
 
 
 summary(cb3.temp)
 
-#model3 <- glm(binary ~ basis.temp  + strata(uniqueID), data = data, family = quasipoisson())
+# model3 <- glm(binary ~ basis.temp  + strata(uniqueID), data = data, family = quasipoisson())
 
 dim(cb3.temp)
 dim(model3)
 
 
-pred3.temp <- crosspred(cb3.temp, model3, cen=21, by=1)
-
-
+pred3.temp <- crosspred(cb3.temp, model3, cen = 21, by = 1)
 ```
 
 
@@ -1370,62 +1162,34 @@ pred3.temp <- crosspred(cb3.temp, model3, cen=21, by=1)
 head(dlnm::drug, 3)
 head(dlnm::nested, 4)
 
-Qdrug <- as.matrix(dlnm::drug[,rep(7:4, each=7)])
-colnames(Qdrug) <- paste("lag", 0:27, sep="")
-Qdrug[1:3,1:14]
+Qdrug <- as.matrix(dlnm::drug[, rep(7:4, each = 7)])
+colnames(Qdrug) <- paste("lag", 0:27, sep = "")
+Qdrug[1:3, 1:14]
 
-cbdrug <- crossbasis(Qdrug, lag=27, argvar=list("lin"),
-    arglag=list(fun="ns",knots=c(9,18)))
+cbdrug <- crossbasis(Qdrug,
+  lag = 27, argvar = list("lin"),
+  arglag = list(fun = "ns", knots = c(9, 18))
+)
 
 summary(cbdrug)
 
-mdrug <- lm(out~cbdrug+sex, drug)
-pdrug <- crosspred(cbdrug, mdrug, at=0:20*5)
+mdrug <- lm(out ~ cbdrug + sex, drug)
+pdrug <- crosspred(cbdrug, mdrug, at = 0:20 * 5)
 
-with(pdrug,cbind(allfit,alllow,allhigh)["50",])
+with(pdrug, cbind(allfit, alllow, allhigh)["50", ])
 
-pdrug$matfit["20","lag3"]
+pdrug$matfit["20", "lag3"]
 
-plot(pdrug, zlab="Effect", xlab="Dose", ylab="Lag (days)")
-plot(pdrug, var=60, ylab="Effect at dose 60", xlab="Lag (days)", ylim=c(-1,5))
-plot(pdrug, lag=10, ylab="Effect at lag 10", xlab="Dose", ylim=c(-1,5))
-
+plot(pdrug, zlab = "Effect", xlab = "Dose", ylab = "Lag (days)")
+plot(pdrug, var = 60, ylab = "Effect at dose 60", xlab = "Lag (days)", ylim = c(-1, 5))
+plot(pdrug, lag = 10, ylab = "Effect at lag 10", xlab = "Dose", ylim = c(-1, 5))
 ```
 
 
 ```{r}
 # walking through a simple DLNM according to Gasp. paper
 
-# trying to create a matrix of exposure histories
-head(data,1000)
-
-dim(data)
-
-data = final_dataframe
-
-library(purrr)
-library(zoo)
-
-
-# # this makes a long format and doesnt work
-# # Function to calculate lag temperature values for each row
-# calculate_lag_temperatures <- function(temp_values, lag) {
-#   lagged_temps <- zoo::rollapply(temp_values, width = lag + 1, FUN = mean, align = "right", na.rm = TRUE, fill = NA)
-#   lagged_temps <- tail(lagged_temps, num_lag_days)
-#   return(lagged_temps)
-# }
-# 
-# # Use purrr::pmap_dfr() to apply the function row-wise and bind rows
-# lag_temp_df <- data %>%
-#   filter(!is.na(uniqueID)) %>%
-#   pmap_dfr(~ tibble(lag_temp = calculate_lag_temperatures(data$MeanTemperature, 0:14)))
-# 
-# # View the resulting dataframe
-# head(lag_temp_df)
-# dim(lag_temp_df)
-# 
-# 480*15
-
+data <- final_dataframe
 
 ####
 # adding columns for lag temepratures for 0-14 days
@@ -1433,21 +1197,22 @@ data <- data %>%
   arrange(county, Date) %>%
   group_by(county) %>%
   mutate(
-         lag0 = MaxTemperature,
-      lag1 = (MaxTemperature + lag(MaxTemperature, 1)) / 2,
-      lag2 = (MaxTemperature + lag(MaxTemperature, 1) + lag(MaxTemperature, 2)) / 3,
-      lag3 = (MaxTemperature + lag(MaxTemperature, 1) + lag(MaxTemperature, 2) + lag(MaxTemperature, 3)) /4,
-      lag4 = (MaxTemperature + lag(MaxTemperature, 1) + lag(MaxTemperature, 2) + lag(MaxTemperature, 3) + lag(MaxTemperature, 4)) /5,
-      lag5 = (MaxTemperature + lag(MaxTemperature, 1) + lag(MaxTemperature, 2) + lag(MaxTemperature, 3) + lag(MaxTemperature, 4) + lag(MaxTemperature, 5)) /6,
-      lag6 = (MaxTemperature + lag(MaxTemperature, 1) + lag(MaxTemperature, 2) + lag(MaxTemperature, 3) + lag(MaxTemperature, 4) + lag(MaxTemperature, 5) + lag(MaxTemperature, 6)) /7,
-      lag7 = (MaxTemperature + lag(MaxTemperature, 1) + lag(MaxTemperature, 2) + lag(MaxTemperature, 3) + lag(MaxTemperature, 4) + lag(MaxTemperature, 5) + lag(MaxTemperature, 6) + lag(MaxTemperature, 7)) /8,
-      lag8 = (MaxTemperature + lag(MaxTemperature, 1) + lag(MaxTemperature, 2) + lag(MaxTemperature, 3) + lag(MaxTemperature, 4) + lag(MaxTemperature, 5) + lag(MaxTemperature, 6) + lag(MaxTemperature, 7) + lag(MaxTemperature, 8)) /9,
-      lag9 = (MaxTemperature + lag(MaxTemperature, 1) + lag(MaxTemperature, 2) + lag(MaxTemperature, 3) + lag(MaxTemperature, 4) + lag(MaxTemperature, 5) + lag(MaxTemperature, 6) + lag(MaxTemperature, 7) + lag(MaxTemperature, 8) + lag(MaxTemperature, 9)) /10,
-      lag10 = (MaxTemperature + lag(MaxTemperature, 1) + lag(MaxTemperature, 2) + lag(MaxTemperature, 3) + lag(MaxTemperature, 4) + lag(MaxTemperature, 5) + lag(MaxTemperature, 6) + lag(MaxTemperature, 7) + lag(MaxTemperature, 8) + lag(MaxTemperature, 9) + lag(MaxTemperature, 10)) /11,
-      lag11 = (MaxTemperature + lag(MaxTemperature, 1) + lag(MaxTemperature, 2) + lag(MaxTemperature, 3) + lag(MaxTemperature, 4) + lag(MaxTemperature, 5) + lag(MaxTemperature, 6) + lag(MaxTemperature, 7) + lag(MaxTemperature, 8) + lag(MaxTemperature, 9) + lag(MaxTemperature, 10) + lag(MaxTemperature, 11)) /12,
-      lag12 = (MaxTemperature + lag(MaxTemperature, 1) + lag(MaxTemperature, 2) + lag(MaxTemperature, 3) + lag(MaxTemperature, 4) + lag(MaxTemperature, 5) + lag(MaxTemperature, 6) + lag(MaxTemperature, 7) + lag(MaxTemperature, 8) + lag(MaxTemperature, 9) + lag(MaxTemperature, 10) + lag(MaxTemperature, 11) + lag(MaxTemperature, 12)) /13,
-      lag13 = (MaxTemperature + lag(MaxTemperature, 1) + lag(MaxTemperature, 2) + lag(MaxTemperature, 3) + lag(MaxTemperature, 4) + lag(MaxTemperature, 5) + lag(MaxTemperature, 6) + lag(MaxTemperature, 7) + lag(MaxTemperature, 8) + lag(MaxTemperature, 9) + lag(MaxTemperature, 10) + lag(MaxTemperature, 11) + lag(MaxTemperature, 12) + lag(MaxTemperature, 13)) /14,
-      lag14 = (MaxTemperature + lag(MaxTemperature, 1) + lag(MaxTemperature, 2) + lag(MaxTemperature, 3) + lag(MaxTemperature, 4) + lag(MaxTemperature, 5) + lag(MaxTemperature, 6) + lag(MaxTemperature, 7) + lag(MaxTemperature, 8) + lag(MaxTemperature, 9) + lag(MaxTemperature, 10) + lag(MaxTemperature, 11) + lag(MaxTemperature, 12) + lag(MaxTemperature, 13) + lag(MaxTemperature, 14)) /15) %>%
+    lag0 = MaxTemperature,
+    lag1 = (MaxTemperature + lag(MaxTemperature, 1)) / 2,
+    lag2 = (MaxTemperature + lag(MaxTemperature, 1) + lag(MaxTemperature, 2)) / 3,
+    lag3 = (MaxTemperature + lag(MaxTemperature, 1) + lag(MaxTemperature, 2) + lag(MaxTemperature, 3)) / 4,
+    lag4 = (MaxTemperature + lag(MaxTemperature, 1) + lag(MaxTemperature, 2) + lag(MaxTemperature, 3) + lag(MaxTemperature, 4)) / 5,
+    lag5 = (MaxTemperature + lag(MaxTemperature, 1) + lag(MaxTemperature, 2) + lag(MaxTemperature, 3) + lag(MaxTemperature, 4) + lag(MaxTemperature, 5)) / 6,
+    lag6 = (MaxTemperature + lag(MaxTemperature, 1) + lag(MaxTemperature, 2) + lag(MaxTemperature, 3) + lag(MaxTemperature, 4) + lag(MaxTemperature, 5) + lag(MaxTemperature, 6)) / 7,
+    lag7 = (MaxTemperature + lag(MaxTemperature, 1) + lag(MaxTemperature, 2) + lag(MaxTemperature, 3) + lag(MaxTemperature, 4) + lag(MaxTemperature, 5) + lag(MaxTemperature, 6) + lag(MaxTemperature, 7)) / 8,
+    lag8 = (MaxTemperature + lag(MaxTemperature, 1) + lag(MaxTemperature, 2) + lag(MaxTemperature, 3) + lag(MaxTemperature, 4) + lag(MaxTemperature, 5) + lag(MaxTemperature, 6) + lag(MaxTemperature, 7) + lag(MaxTemperature, 8)) / 9,
+    lag9 = (MaxTemperature + lag(MaxTemperature, 1) + lag(MaxTemperature, 2) + lag(MaxTemperature, 3) + lag(MaxTemperature, 4) + lag(MaxTemperature, 5) + lag(MaxTemperature, 6) + lag(MaxTemperature, 7) + lag(MaxTemperature, 8) + lag(MaxTemperature, 9)) / 10,
+    lag10 = (MaxTemperature + lag(MaxTemperature, 1) + lag(MaxTemperature, 2) + lag(MaxTemperature, 3) + lag(MaxTemperature, 4) + lag(MaxTemperature, 5) + lag(MaxTemperature, 6) + lag(MaxTemperature, 7) + lag(MaxTemperature, 8) + lag(MaxTemperature, 9) + lag(MaxTemperature, 10)) / 11,
+    lag11 = (MaxTemperature + lag(MaxTemperature, 1) + lag(MaxTemperature, 2) + lag(MaxTemperature, 3) + lag(MaxTemperature, 4) + lag(MaxTemperature, 5) + lag(MaxTemperature, 6) + lag(MaxTemperature, 7) + lag(MaxTemperature, 8) + lag(MaxTemperature, 9) + lag(MaxTemperature, 10) + lag(MaxTemperature, 11)) / 12,
+    lag12 = (MaxTemperature + lag(MaxTemperature, 1) + lag(MaxTemperature, 2) + lag(MaxTemperature, 3) + lag(MaxTemperature, 4) + lag(MaxTemperature, 5) + lag(MaxTemperature, 6) + lag(MaxTemperature, 7) + lag(MaxTemperature, 8) + lag(MaxTemperature, 9) + lag(MaxTemperature, 10) + lag(MaxTemperature, 11) + lag(MaxTemperature, 12)) / 13,
+    lag13 = (MaxTemperature + lag(MaxTemperature, 1) + lag(MaxTemperature, 2) + lag(MaxTemperature, 3) + lag(MaxTemperature, 4) + lag(MaxTemperature, 5) + lag(MaxTemperature, 6) + lag(MaxTemperature, 7) + lag(MaxTemperature, 8) + lag(MaxTemperature, 9) + lag(MaxTemperature, 10) + lag(MaxTemperature, 11) + lag(MaxTemperature, 12) + lag(MaxTemperature, 13)) / 14,
+    lag14 = (MaxTemperature + lag(MaxTemperature, 1) + lag(MaxTemperature, 2) + lag(MaxTemperature, 3) + lag(MaxTemperature, 4) + lag(MaxTemperature, 5) + lag(MaxTemperature, 6) + lag(MaxTemperature, 7) + lag(MaxTemperature, 8) + lag(MaxTemperature, 9) + lag(MaxTemperature, 10) + lag(MaxTemperature, 11) + lag(MaxTemperature, 12) + lag(MaxTemperature, 13) + lag(MaxTemperature, 14)) / 15
+  ) %>%
   ungroup()
 
 # not sure which one it should be
@@ -1472,18 +1237,18 @@ data <- data %>%
     lag14 = lag(MaxTemperature, 14)
   ) %>%
   ungroup()
-  
+
 
 
 head(data_cases, 200)
 
 # only cases
-data_cases = data %>%
-    filter(binary == 1)
+data_cases <- data %>%
+  filter(binary == 1)
 
 # only 2020 just to try it out
-data_cases = data_cases %>%
-    filter(year == 2020)
+data_cases <- data_cases %>%
+  filter(year == 2020)
 
 # selecting only the lag colums "exposure histories matrix"
 Qdata_cases <- data_cases %>%
@@ -1495,29 +1260,30 @@ dim(Qdata_cases)
 # the "lag" here must be consistent with the number of columns
 # argvar and arglag define the exposure-response and lag-response functions
 # this is a simple linear model assuming a gaussian distrubution
-cbcases_test <- crossbasis(Qdata_cases, lag=14, argvar=list("lin"),
-    arglag=list(fun="ns",knots=c(4,4)))
+cbcases_test <- crossbasis(Qdata_cases,
+  lag = 14, argvar = list("lin"),
+  arglag = list(fun = "ns", knots = c(4, 4))
+)
 summary(cbcases_test)
 
 # unclear to me what "at" does
-mcases_test <- lm(MeanTemperature~cbcases_test, data_cases)
-pcases_test <- crosspred(cbcases_test, mcases_test, at=0:20*5)
+mcases_test <- lm(MeanTemperature ~ cbcases_test, data_cases)
+pcases_test <- crosspred(cbcases_test, mcases_test, at = 0:20 * 5)
 
 
- dim(data)
- names(data_cases)
- help(drug)
+dim(data)
+names(data_cases)
+help(drug)
 
- # estimates the overall cumulative effects associated to exposure at temperature 50 (really not sure how to interpret this)
-with(pcases_test,cbind(allfit,alllow,allhigh)["50",])
+# estimates the overall cumulative effects associated to exposure at temperature 50 (really not sure how to interpret this)
+with(pcases_test, cbind(allfit, alllow, allhigh)["50", ])
 
 # this can be interpreted as a decrease in outcome associated with temperature of 20C 3 days earlier
-pcases_test$matfit["20","lag3"]
+pcases_test$matfit["20", "lag3"]
 
-plot(pcases_test, zlab="Effect", xlab="Temperature", ylab="Lag (days)")
-plot(pcases_test, var=60, ylab="Effect at Temperature 60", xlab="Lag (days)", ylim=c(-1,5))
-plot(pdrug_test, lag=10, ylab="Effect at lag 10", xlab="Dose", ylim=c(-1,5))
- 
+plot(pcases_test, zlab = "Effect", xlab = "Temperature", ylab = "Lag (days)")
+plot(pcases_test, var = 60, ylab = "Effect at Temperature 60", xlab = "Lag (days)", ylim = c(-1, 5))
+plot(pdrug_test, lag = 10, ylab = "Effect at lag 10", xlab = "Dose", ylim = c(-1, 5))
 ```
 
 
