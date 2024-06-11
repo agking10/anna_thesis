@@ -5,17 +5,6 @@ date: "2024-05-22"
 output: html_document
 ---
 
-# Andrew - the purpose of this file is to upload the death data provided to me by NCDHHS. It is divided into three files, 1999-2013, 2014-2021, and 2022, with each one being formatted slightly differently (for example, ethnicity is coded differently for the first file then the second two). The output of this code should be one .csv file, where each row represents a death, and it contains all overdose deaths for 1999-2022. 
-
-# the coding system for deaths (the first filtering part) can be kind of confusing. You can look up ICD10 codes if you want, and the url is contained in the cell where I list the codes. Basically the primary code lets you know if its an overdose, and the secondary code (which there can be multiple listed of) is the more specific cause of death. 
-
-# also, there is a cell towards the bottom that creates a file called population_per_county_per_year which you need in the future. 
-
-# files you need to upload to get this to work -> "2014_2021_mortality.csv", "1999_2013_mortality.csv", "2022 NC Mortality.csv", "NCprojectionsbyage2022.csv"
-
-# problems -> nothing it's just not clean
-
-
 ################ THIS FILE HAS BEEN REPLACED WITH clean_opiod_death_data.R  #######################
 
 ---
