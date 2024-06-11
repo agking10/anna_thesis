@@ -1,5 +1,5 @@
-source("load_libraries.R")
-source("paths.R")
+source("(2) load_libraries.R")
+source("(3) paths.R")
 load_libraries()
 
 ############# DEFINE CONSTANTS ############
@@ -82,7 +82,7 @@ FEDERAL_HOLIDAYS <- as.Date(c(
 ))
 
 # mapping from county id to human readable name
-COUNTY_MAPPING <- c(
+COUNTY_MAPPING_2014 <- c(
   "1" = "Alamance", "3" = "Alexander", "5" = "Alleghany", "7" = "Anson",
   "9" = "Ashe", "11" = "Avery", "13" = "Beaufort", "15" = "Bertie",
   "17" = "Bladen", "19" = "Brunswick", "21" = "Buncombe", "23" = "Burke",
@@ -110,9 +110,37 @@ COUNTY_MAPPING <- c(
   "193" = "Wilkes", "195" = "Wilson", "197" = "Yadkin", "199" = "Yancey"
 )
 
+# county mapping for 1999-2013 data
+COUNTY_MAPPING_1999 <- c(
+  "1" = "Alamance", "2" = "Alexander", "3" = "Alleghany", "4" = "Anson",
+  "5" = "Ashe", "6" = "Avery", "7" = "Beaufort", "8" = "Bertie",
+  "9" = "Bladen", "10" = "Brunswick", "11" = "Buncombe", "12" = "Burke",
+  "13" = "Cabarrus", "14" = "Caldwell", "15" = "Camden", "16" = "Carteret",
+  "17" = "Caswell", "18" = "Catawba", "19" = "Chatham", "20" = "Cherokee",
+  "21" = "Chowan", "22" = "Clay", "23" = "Cleveland", "24" = "Columbus",
+  "25" = "Craven", "26" = "Cumberland", "27" = "Currituck", "28" = "Dare",
+  "29" = "Davidson", "30" = "Davie", "31" = "Duplin", "32" = "Durham",
+  "33" = "Edgecombe", "34" = "Forsyth", "35" = "Franklin", "36" = "Gaston",
+  "37" = "Gates", "38" = "Graham", "39" = "Granville", "40" = "Greene",
+  "41" = "Guilford", "42" = "Halifax", "43" = "Harnett", "44" = "Haywood",
+  "45" = "Henderson", "46" = "Hertford", "47" = "Hoke", "48" = "Hyde",
+  "49" = "Iredell", "50" = "Jackson", "51" = "Johnston", "52" = "Jones",
+  "53" = "Lee", "54" = "Lenoir", "55" = "Lincoln", "56" = "Macon",
+  "57" = "Madison", "58" = "Martin", "59" = "McDowell", "60" = "Mecklenburg",
+  "61" = "Mitchell", "62" = "Montgomery", "63" = "Moore", "64" = "Nash",
+  "65" = "New Hanover", "66" = "Northampton", "67" = "Onslow", "68" = "Orange",
+  "69" = "Pamlico", "70" = "Pasquotank", "71" = "Pender", "72" = "Perquimans",
+  "73" = "Person", "74" = "Pitt", "75" = "Polk", "76" = "Randolph",
+  "77" = "Richmond", "78" = "Robeson", "79" = "Rockingham", "80" = "Rowan",
+  "81" = "Rutherford", "82" = "Sampson", "83" = "Scotland", "84" = "Stanly",
+  "85" = "Stokes", "86" = "Surry", "87" = "Swain", "88" = "Transylvania",
+  "89" = "Tyrrell", "90" = "Union", "91" = "Vance", "92" = "Wake",
+  "93" = "Warren", "94" = "Washington", "95" = "Watauga", "96" = "Wayne",
+  "97" = "Wilkes", "98" = "Wilson", "99" = "Yadkin", "100" = "Yancey"
+)
 
 # mapping between county numbers and FIPS codes
-COUNTY_FIPS_MAPPING <- c(
+COUNTY_FIPS_MAPPING_1999 <- c(
   "1" = "37001", "2" = "37003", "3" = "37005", "4" = "37007",
   "5" = "37009", "6" = "37011", "7" = "37013", "8" = "37015",
   "9" = "37017", "10" = "37019", "11" = "37021", "12" = "37023",
@@ -141,11 +169,35 @@ COUNTY_FIPS_MAPPING <- c(
 )
 
 
+COUNTY_FIPS_MAPPING_2014 <- c(
+  "1" = "37001", "3" = "37003", "5" = "37005", "7" = "37007", "9" = "37009",
+  "11" = "37011", "13" = "37013", "15" = "37015", "17" = "37017", "19" = "37019",
+  "21" = "37021", "23" = "37023", "25" = "37025", "27" = "37027", "29" = "37029",
+  "31" = "37031", "33" = "37033", "35" = "37035", "37" = "37037", "39" = "37039",
+  "41" = "37041", "43" = "37043", "45" = "37045", "47" = "37047", "49" = "37049",
+  "51" = "37051", "53" = "37053", "55" = "37055", "57" = "37057", "59" = "37059",
+  "61" = "37061", "63" = "37063", "65" = "37065", "67" = "37067", "69" = "37069",
+  "71" = "37071", "73" = "37073", "75" = "37075", "77" = "37077", "79" = "37079",
+  "81" = "37081", "83" = "37083", "85" = "37085", "87" = "37087", "89" = "37089",
+  "91" = "37091", "93" = "37093", "95" = "37095", "97" = "37097", "99" = "37099",
+  "101" = "37101", "103" = "37103", "105" = "37105", "107" = "37107", "109" = "37109",
+  "111" = "37111", "113" = "37113", "115" = "37115", "117" = "37117", "119" = "37119",
+  "121" = "37121", "123" = "37123", "125" = "37125", "127" = "37127", "129" = "37129",
+  "131" = "37131", "133" = "37133", "135" = "37135", "137" = "37137", "139" = "37139",
+  "141" = "37141", "143" = "37143", "145" = "37145", "147" = "37147", "149" = "37149",
+  "151" = "37151", "153" = "37153", "155" = "37155", "157" = "37157", "159" = "37159",
+  "161" = "37161", "163" = "37163", "165" = "37165", "167" = "37167", "169" = "37169",
+  "171" = "37171", "173" = "37173", "175" = "37175", "177" = "37177", "179" = "37179",
+  "181" = "37181", "183" = "37183", "185" = "37185", "187" = "37187", "189" = "37189",
+  "191" = "37191", "193" = "37193", "195" = "37195", "197" = "37197", "199" = "37199"
+)
+
+
 ############# END CONSTANTS ############
 
 # normalizes and aggregates opiate death data for NC from 1999-2022
 
-write_opiod_death_tables <- function() {
+write_opioid_death_tables <- function() {
   # LOAD DATA
 
   # reading in data from file
@@ -192,8 +244,8 @@ write_opiod_death_tables <- function() {
   }
 
 
-  death_data_2014_2022$county <- COUNTY_MAPPING[as.character(death_data_2014_2022$COD)]
-  death_data_2014_2022$GEOID <- COUNTY_FIPS_MAPPING[as.character(death_data_2014_2022$COD)]
+  death_data_2014_2022$county <- COUNTY_MAPPING_2014[as.character(death_data_2014_2022$COD)]
+  death_data_2014_2022$GEOID <- COUNTY_FIPS_MAPPING_2014[as.character(death_data_2014_2022$COD)]
   death_data_2014_2022 <- subset(death_data_2014_2022, select = -c(AGETYPE, COD))
   death_data_2014_2022$DTHDATE <- sapply(death_data_2014_2022$DTHDATE, add_leading_zero)
   # death_data_2014_2022$DTHDATE <- as.character(death_data_2014_2022$DTHDATE)
@@ -217,19 +269,19 @@ write_opiod_death_tables <- function() {
     "Other non-White", "White", "Black", "American Indian", "Chinese", "Japanese", "Hawaiian", "Filipino", "Other Asian", "Unknown"
   ))
 
-  file_path <- file.path(OPIOD_DEATH_DIR, "nc_opiod_deaths_2014_2022.csv")
+  file_path <- file.path(OPIOID_DEATH_DIR, "nc_opioid_deaths_2014_2022.csv")
   # Save the data frame as a .csv file
   write.csv(death_data_2014_2022, file = file_path, row.names = FALSE)
 
 
-  death_data_1999_2013$GEOID <- COUNTY_FIPS_MAPPING[as.character(death_data_1999_2013$COOCC)]
-  death_data_1999_2013$county <- COUNTY_MAPPING[as.character(death_data_1999_2013$COOCC)]
+  death_data_1999_2013$GEOID <- COUNTY_FIPS_MAPPING_1999[as.character(death_data_1999_2013$COOCC)]
+  death_data_1999_2013$county <- COUNTY_MAPPING_1999[as.character(death_data_1999_2013$COOCC)]
   death_data_1999_2013$DTHDATE <- sapply(death_data_1999_2013$DTHDATE, add_leading_zero)
   death_data_1999_2013 <- subset(death_data_1999_2013, select = -c(AGECODE, COOCC))
   death_data_1999_2013$DTHDATE <- as.Date(death_data_1999_2013$DTHDATE, format = "%m%d%Y")
 
 
-  file_path <- file.path(OPIOD_DEATH_DIR, "nc_opiod_deaths_1999_2013.csv")
+  file_path <- file.path(OPIOID_DEATH_DIR, "nc_opioid_deaths_1999_2013.csv")
   write.csv(death_data_1999_2013, file = file_path, row.names = FALSE)
 
   death_data_2014_2022 <- death_data_2014_2022 %>%
@@ -281,8 +333,78 @@ write_opiod_death_tables <- function() {
 
   # removing deaths that fall on federal FEDERAL_HOLIDAYS
   all_deaths <- all_deaths %>%
-    mutate(deathdate = as.Date(deathdate)) %>%
-    filter(!deathdate %in% FEDERAL_HOLIDAYS)
+    mutate(Date = as.Date(deathdate)) %>%
+    filter(!deathdate %in% FEDERAL_HOLIDAYS) %>%
+    select(-deathdate)
+  
+  combined_temp_data = read.csv(file.path(TEMPERATURE_DATA_DIR, "combined_temp_data.csv"))
+  
+  selected_temp_data <- combined_temp_data[c("Date", "county", "MinTemperature", "MeanTemperature", "MaxTemperature", "HeatIndex")]
+  
+  # Merging selected columns with all_deaths
+  all_deaths <- merge(all_deaths, selected_temp_data, by = c("Date", "county"), all.x = TRUE)
+  
+  all_deaths <- all_deaths %>%
+    mutate(
+      race = case_when(
+        grepl("White", race) & !grepl("Other", race) ~ "White Non-Hispanic",
+        grepl("Black", race) & ethnicity == "N" ~ "Black Non-Hispanic",
+        grepl("Asian|Japanese|Chinese|Filipino", race) & ethnicity == "N" ~ "Asian Non-Hispanic",
+        grepl("American Indian|Native Hawaiian", race) & ethnicity == "N" ~ "Native American Non-Hispanic",
+        ethnicity != "N" ~ "Any Race - Hispanic",
+        TRUE ~ "Other"
+      )
+    )
+  
+  # setting as warm and cool season
+  season_vector <- character(nrow(all_deaths))
+  
+  # Assign seasons based on the criteria
+  season_vector[months(all_deaths$Date) %in% c("May", "June", "July", "August", "September", "October")] <- "warm"
+  season_vector[months(all_deaths$Date) %in% c("December", "January", "February", "March")] <- "cool"
+  season_vector[months(all_deaths$Date) %in% c("April", "November")] <- "shoulder"
+  
+  # Add the season column to the dataframe
+  all_deaths$season <- season_vector
+  
+  warm_season_start <- as.Date("05-01", format = "%m-%d")
+  warm_season_end <- as.Date("10-14", format = "%m-%d")
+  
+  # Mutate block column
+  all_deaths <- all_deaths %>%
+    mutate(
+      block = cut(
+        Date, 
+        breaks = seq(warm_season_start, warm_season_end, by = "21 days"), 
+        labels = FALSE,
+        right = FALSE
+      )
+    )
+  
+  all_deaths <- all_deaths %>%
+    mutate(
+      month_day = format(Date, "%m-%d"),
+      block = case_when(
+        month_day %in% c("12-01", "12-02", "12-03", "12-04", "12-05", "12-06", "12-07", "12-08", "12-09", "12-10", "12-11", "12-12", "12-13", "12-14", "12-15", "12-16", "12-17", "12-18", "12-19", "12-20", "12-21") ~ 1,
+        month_day %in% c("12-22", "12-23", "12-24", "12-25", "12-26", "12-27", "12-28", "12-29", "12-30", "12-31", "01-01", "01-02", "01-03", "01-04", "01-05", "01-06", "01-07", "01-08", "01-09", "01-10", "01-11") ~ 2,
+        month_day %in% c("01-12", "01-13", "01-14", "01-15", "01-16", "01-17", "01-18", "01-19", "01-20", "01-21", "01-22", "01-23", "01-24", "01-25", "01-26", "01-27", "01-28", "01-29", "01-30", "01-31", "02-01") ~ 3,
+        month_day %in% c("02-02", "02-03", "02-04", "02-05", "02-06", "02-07", "02-08", "02-09", "02-10", "02-11", "02-12", "02-13", "02-14", "02-15", "02-16", "02-17", "02-18", "02-19", "02-20", "02-21") ~ 4,
+        month_day %in% c("02-22", "02-23", "02-24", "02-25", "02-26", "02-27", "02-28", "02-29", "03-01", "03-02", "03-03", "03-04", "03-05", "03-06", "03-07", "03-08", "03-09", "03-10", "03-11", "03-12", "03-13", "03-14") ~ 5,
+        TRUE ~ 6 # Default case, assign a block for any remaining dates
+        # Add more cases if needed
+      )
+    )
 
-  write.csv(all_deaths, file.path(OPIOD_DEATH_DIR, "all_death_data_2022.csv"), row.names = FALSE)
+  write.csv(all_deaths, file.path(OPIOID_DEATH_DIR, "all_death_data_2022.csv"), row.names = FALSE)
+  
+  warm_deaths <- all_deaths %>%  
+    filter(season == "warm")
+  
+  cool_deaths <- all_deaths %>%  
+    filter(season == "cool")
+  
+  write.csv(warm_deaths, file.path(DEATH_DATA_DIR, "warm_season_deaths.csv"), row.names = FALSE)
+  write.csv(cool_deaths, file.path(DEATH_DATA_DIR, "cool_season_deaths.csv"), row.names = FALSE)
+  
+  
 }

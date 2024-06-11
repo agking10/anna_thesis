@@ -1,5 +1,5 @@
-source("load_libraries.R")
-source("paths.R")
+source("(2) load_libraries.R")
+source("(3) paths.R")
 # source("clean_opiod_death_data.R")
 # source("extract_SVI.R")
 
@@ -37,8 +37,6 @@ match_referent_days <- function(data, temp_data, months) {
         case_date <- year_data_filtered$Date[i]
         case_min_temp <- year_data_filtered$MinTemperature[i]
         case_max_temp <- year_data_filtered$MaxTemperature[i]
-
-
         case_mean_temp <- year_data_filtered$MeanTemperature[i]
         case_heat_index <- year_data_filtered$HeatIndex[i]
         case_opioid <- year_data_filtered$opioid_contributing[i, months]
@@ -124,8 +122,8 @@ match_referent_days <- function(data, temp_data, months) {
 }
 
 match_referent_days <- function() {
-  warm_season_deaths <- read.csv(file.path(DEATH_DATA_DIR, "warm_season_deaths.csv"))
-  cool_season_deaths <- read.csv(file.path(DEATH_DATA_DIR, "cool_season_deaths.csv"))
+  warm_season_deaths <- read.csv(file.path(OPIOID_DEATH_DIR, "warm_season_deaths.csv"))
+  cool_season_deaths <- read.csv(file.path(OPIOID_DEATH_DIR, "cool_season_deaths.csv"))
 
   data_warm_season <- read.csv(file.path(TEMPERATURE_DATA_DIR, "data_warm_season.csv"))
   data_cool_season <- read.csv(file.path(TEMPERATURE_DATA_DIR, "data_cool_season.csv"))
@@ -142,58 +140,3 @@ match_referent_days <- function() {
   write.csv(matched_data_cool_blocks, file.path(MISC_DATA_DIR, "cool_season_matched_data_blocks.csv"), row.names = FALSE)
 }
 
-# Work in progress
-# plot_dlnm <- function(pnest) {
-#   temp_values <- data.frame(pnest$predvar)
-#   matfit_df <- data.frame(pnest$matRRfit)
-#   matlow_df <- data.frame(pnest$matRRlow)
-#   mathigh_df <- data.frame(pnest$matRRhigh)
-
-#   # List to store the plots
-#   plot_list <- list()
-
-#   # Iterate over column indices
-#   for (i in 0:6) {
-#     # Create plot data for the current column index
-#     plot_data <- data.frame(
-#       temp = temp_values,
-#       fit = matfit_df[, paste0("lag", i)], # Values from the current row of matRRfit
-#       low = matlow_df[, paste0("lag", i)], # Values from the current row of matRRlow
-#       high = mathigh_df[, paste0("lag", i)] # Values from the current row of matRRhigh
-#     )
-
-#     # Create the plot for the current column index
-#     plot_list[[paste0("OMTp", i)]] <- ggplot(plot_data, aes(x = pnest.predvar)) +
-#       geom_line(aes(y = fit), color = "red") +
-#       geom_ribbon(aes(ymin = low, ymax = high), fill = "red", alpha = 0.3) +
-#       labs(x = NULL, y = NULL) +
-#       geom_hline(yintercept = 1, linetype = "dashed", color = "black") + # Add horizontal line
-#       scale_x_continuous(breaks = seq(10, 40, by = 5)) +
-#       coord_cartesian(ylim = c(0.5, 1.75)) + # Set y-axis limits
-#       theme_minimal()
-#   }
-
-
-#   # Combine plots
-#   combined_plot <- plot_grid(plotlist = plot_list, nrow = 3) # Combine plots in a grid layout
-
-#   OMTp0 <- plot_list$OMTp0
-#   OMTp1 <- plot_list$OMTp1
-#   OMTp2 <- plot_list$OMTp2
-#   OMTp3 <- plot_list$OMTp3
-#   OMTp4 <- plot_list$OMTp4
-#   OMTp5 <- plot_list$OMTp5
-#   OMTp6 <- plot_list$OMTp6
-
-
-
-#   library(cowplot) # Load the cowplot package
-
-#   # Combine the plots
-#   # combined_plot <- plot_grid(plotlist = plot_list, align = "hv", ncol = 3)
-
-#   # Display the combined plot
-
-#   combined_plot <- (plot_list$OMTp0 / plot_list$OMTp1 / plot_list$OMTp2) +
-#     plot_layout(guides = "collect")
-# }

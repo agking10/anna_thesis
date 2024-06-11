@@ -1,6 +1,9 @@
-source("load_libraries.R")
+source("(2) load_libraries.R")
 
 GEOGRAPHIC_RESOLUTION <- "county"
+
+#api key for census tract data
+census_api_key("bdfb48e7e8ca85e6c72d18481ec5c0951b9c0abf", install = T) #need to remove this eventually
 
 GetCensusData <- function(geography) {
   state_code <- 37
@@ -23,7 +26,7 @@ GetCensusData <- function(geography) {
 extract_svi_data <- function() {
   census_data <- GetCensusData(GEOGRAPHIC_RESOLUTION)
 
-  tif_file <- file.path(file.path("svi_2020_tract_overall_nad83.tif"))
+  tif_file <- file.path(file.path(MISC_DATA_DIR, "svi_2020_tract_overall_nad83.tif"))
 
   raster_data <- rast(tif_file)
 

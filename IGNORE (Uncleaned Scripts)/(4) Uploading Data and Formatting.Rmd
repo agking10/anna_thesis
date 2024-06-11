@@ -27,7 +27,7 @@ combined_temp_data <- read.csv(file.path(TEMPERATURE_DATA_DIR, "combined_temp_da
 
 combined_temp_data$Date <- as.Date(combined_temp_data$Date)
 
-death_data_through_2022 <- read.csv(file.path(OPIOD_DEATH_DIR, "all_death_data_2022.csv"))
+death_data_through_2022 <- read.csv(file.path(OPIOID_DEATH_DIR, "all_death_data_2022.csv"))
 
 death_data_all <- death_data_through_2022
 

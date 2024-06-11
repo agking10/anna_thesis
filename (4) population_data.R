@@ -1,5 +1,5 @@
-source("paths.R")
-source("load_libraries.R")
+source("(3) paths.R")
+source("(2) load_libraries.R")
 load_libraries()
 
 # population data
