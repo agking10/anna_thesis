@@ -16,23 +16,11 @@ knitr::opts_chunk$set(echo = TRUE)
 ## this function matches deaths (cases) with controls within the same three-week block. The warm season (May 1 - September 30) each year is divided into 21 day intervals. Block 1 corresponds to May 1 - 21 of each year. 
 
 ```{r}
-#loop isnt working ... check on this ...
+# loop isnt working ... check on this ...
 
 ################################################################################
 ################### FUNCTION TO MATCH CASES WITH CONTROLS ######################
 ################################################################################
-
-# # subsetting data for testing the loop
-# subset_data = cool_season_deaths %>%
-#   filter(county %in% c("Alamance"),
-#          year %in% 2000:2022)
-# 
-# i = seq_len(nrow(year_data))[1]
-# #
-# data = subset_data
-# temp_data = data_cool_season
-# County = "Alamance"
-# Year = 2020
 
 # Function to match deaths to referent days within the same month and day of the week
 match_referent_days <- function(data, temp_data) {
@@ -42,7 +30,6 @@ match_referent_days <- function(data, temp_data) {
   unique_years <- unique(data$year)
 
   for (County in unique_counties) {
-
     county_data <- data %>% filter(county == County)
 
     print(paste(County))
@@ -58,19 +45,18 @@ match_referent_days <- function(data, temp_data) {
       # Check if year_data_filtered is empty
       if (nrow(year_data_filtered) == 0) {
         warning(paste("No valid dates for year:", Year))
-        next  # Skip to the next year
+        next # Skip to the next year
       }
 
       for (i in seq_len(nrow(year_data_filtered))) {
-
         case_date <- year_data_filtered$Date[i]
         case_min_temp <- year_data_filtered$MinTemperature[i]
         case_max_temp <- year_data_filtered$MaxTemperature[i]
         case_mean_temp <- year_data_filtered$MeanTemperature[i]
-        case_heat_index = year_data_filtered$HeatIndex[i]
-        case_opioid = year_data_filtered$opioid_contributing[i]
-        case_cocaine = year_data_filtered$cocaine_contributing[i]
-        case_stimi = year_data_filtered$other_stimi_contributing[i]
+        case_heat_index <- year_data_filtered$HeatIndex[i]
+        case_opioid <- year_data_filtered$opioid_contributing[i]
+        case_cocaine <- year_data_filtered$cocaine_contributing[i]
+        case_stimi <- year_data_filtered$other_stimi_contributing[i]
         case_day_of_week <- weekdays(case_date)
         case_year <- year(year_data_filtered$Date[i])
         case_county <- year_data_filtered$county[i]
@@ -80,7 +66,7 @@ match_referent_days <- function(data, temp_data) {
         case_race <- year_data_filtered$simple_race[i]
         case_age <- year_data_filtered$simple_age[i]
         case_ethnicity <- year_data_filtered$simple_ethnicity[i]
-        case_block = year_data_filtered$block[i]
+        case_block <- year_data_filtered$block[i]
 
         referent_days <- temp_data %>%
           filter(
@@ -137,7 +123,7 @@ match_referent_days <- function(data, temp_data) {
             other_stimi_contributing = case_data$other_stimi_contributing
           ) %>%
           select(
-            Date, county, GEOID, MinTemperature, MaxTemperature, MeanTemperature, HeatIndex, uniqueID, case_control, opioid_contributing, cocaine_contributing, other_stimi_contributing, 
+            Date, county, GEOID, MinTemperature, MaxTemperature, MeanTemperature, HeatIndex, uniqueID, case_control, opioid_contributing, cocaine_contributing, other_stimi_contributing,
             year, total_population, simple_race, sex, ethnicity, simple_age, block
           )
 
@@ -154,19 +140,13 @@ match_referent_days <- function(data, temp_data) {
   return(matched_data)
 }
 
-
 # Apply the matching function
-matched_data_cool_blocks = match_referent_days(cool_season_deaths, data_cool_season)
-
-
-head(matched_data_cool_blocks, 1000)
+matched_data_cool_blocks <- match_referent_days(cool_season_deaths, data_cool_season)
 
 # # to save the data to file
 # write.csv(matched_data_cool_blocks, "~/Thesis Work/Thesis Files/cool_season_matched_data_blocks_2022.csv", row.names = FALSE)
 
 ################################################################################
 ################################################################################
-
-
 ```
 

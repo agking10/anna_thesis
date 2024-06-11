@@ -15,60 +15,53 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## this function matches deaths (cases) with controls within the same three-week block. The warm season (May 1 - September 30) each year is divided into 21 day intervals. Block 1 corresponds to May 1 - 21 of each year. 
 
+
+##### This file is no longer needed
+
 ```{r}
 ################################################################################
 ################### FUNCTION TO MATCH CASES WITH CONTROLS ######################
 ################################################################################
 
-# # # subsetting data for testing the loop
-# subset_data = warm_season_deaths %>%
-#   filter(county %in% c("Orange"),
-#          year %in% 2015)
-# 
-# i = seq_len(nrow(year_data))[1]
-# #
-# data = subset_data
-# temp_data = data_warm_season
-# County = "Orange"
-# Year = 2015
+
 
 # Function to match deaths to referent days within the same month and day of the week
-match_referent_days <- function(data, temp_data) {
+match_referent_days <- function(data, temp_data, months) {
   matched_data <- data.frame()
 
   unique_counties <- unique(data$county)
   unique_years <- unique(data$year)
 
   for (County in unique_counties) {
-
     county_data <- data %>% filter(county == County)
 
     print(paste(County))
 
     for (Year in unique_years) {
       year_data <- county_data %>% filter(year == Year)
-      #print(paste(Year))
+      # print(paste(Year))
 
       # Filter data to include only May, June, July, August, and September
       year_data_filtered <- year_data %>%
-        filter(months(Date) %in% c("May", "June", "July", "August", "September", "October"))
+        filter(months(Date) %in% months)
 
       # Check if year_data_filtered is empty
       if (nrow(year_data_filtered) == 0) {
         warning(paste("No valid dates for year:", Year))
-        next  # Skip to the next year
+        next # Skip to the next year
       }
 
       for (i in seq_len(nrow(year_data_filtered))) {
-
         case_date <- year_data_filtered$Date[i]
         case_min_temp <- year_data_filtered$MinTemperature[i]
         case_max_temp <- year_data_filtered$MaxTemperature[i]
+
+
         case_mean_temp <- year_data_filtered$MeanTemperature[i]
-        case_heat_index = year_data_filtered$HeatIndex[i]
-        case_opioid = year_data_filtered$opioid_contributing[i]
-        case_cocaine = year_data_filtered$cocaine_contributing[i]
-        case_stimi = year_data_filtered$other_stimi_contributing[i]
+        case_heat_index <- year_data_filtered$HeatIndex[i]
+        case_opioid <- year_data_filtered$opioid_contributing[i, months]
+        case_cocaine <- year_data_filtered$cocaine_contributing[i]
+        case_stimi <- year_data_filtered$other_stimi_contributing[i]
         case_day_of_week <- weekdays(case_date)
         case_year <- year(year_data_filtered$Date[i])
         case_county <- year_data_filtered$county[i]
@@ -78,21 +71,17 @@ match_referent_days <- function(data, temp_data) {
         case_race <- year_data_filtered$simple_race[i]
         case_age <- year_data_filtered$simple_age[i]
         case_ethnicity <- year_data_filtered$simple_ethnicity[i]
-        case_block = year_data_filtered$block[i]
+        case_block <- year_data_filtered$block[i]
 
         referent_days <- temp_data %>%
           filter(
             year == case_year,
-            months(Date) %in% c("May", "June", "July", "August", "September", "October"),
+            months(Date) %in% months,
             weekdays(Date) == case_day_of_week,
             county == case_county,
             Date != case_date,
             block == case_block
           )
-
-        # print(paste(case_county))
-        # print(paste("Case date:", case_date))
-        # print(paste("Referent days found:", nrow(referent_days)))
 
         if (nrow(referent_days) == 0) {
           warning(paste("No referent days for case at Date:", case_date))
@@ -134,7 +123,7 @@ match_referent_days <- function(data, temp_data) {
             cocaine_contributing = case_data$cocaine_contributing,
             other_stimi_contributing = case_data$other_stimi_contributing
           ) %>%
-           select(
+          select(
             Date, county, GEOID, MinTemperature, MaxTemperature, MeanTemperature, HeatIndex, uniqueID, case_control, opioid_contributing, cocaine_contributing, other_stimi_contributing,
             year, total_population, simple_race, sex, ethnicity, simple_age, block
           )
@@ -152,13 +141,20 @@ match_referent_days <- function(data, temp_data) {
   return(matched_data)
 }
 
+thesis_files_dir <- "thesis_files"
+
+warm_season_deaths <- read.csv(file.path(thesis_files_dir, "warm_season_deaths.csv"))
+cool_season_deaths <- read.csv(file.path(thesis_files_dir, "cool_season_deaths.csv"))
+
+data_warm_season <- read.csv(file.path(thesis_files_dir, "data_warm_season.csv"))
+data_cool_season <- read.csv(file.path(thesis_files_dir, "data_cool_season.csv"))
+
+warm_months <- c("May", "June", "July", "August", "September", "October")
+cold_months <- c("December", "January", "February", "March")
 
 # Apply the matching function
-matched_data_warm_blocks = match_referent_days(warm_season_deaths, data_warm_season)
-
-head(matched_data_warm_blocks, 1000)
-dim(matched_data_warm_blocks)
-
+matched_data_warm_blocks <- match_referent_days(warm_season_deaths, data_warm_season, warm_months)
+matched_data_cool_blocks <- match_referent_days(cool_season_deaths, data_cool_season, cool_months)
 
 # to save the data to file
 # write.csv(matched_data_warm_blocks, "~/Thesis Work/Thesis Files/warm_season_matched_data_blocks_2022.csv", row.names = FALSE)

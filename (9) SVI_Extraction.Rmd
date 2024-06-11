@@ -16,12 +16,9 @@ GetCensusData <- function(geography) {
   state_code <- 37
   census_data <- get_decennial(
     geography = geography,
-    variables = c("Total_pop" = "P001001"
-                  #"White" = "P005003",
-                  #"Black" = "P005004",
-                  #"Asian" = "P005006",
-                  #"Hispanic" = "P005010"
-                  ),
+    variables = c(
+      "Total_pop" = "P001001"
+    ),
     year = 2010,
     output = "wide",
     geometry = TRUE,
@@ -29,32 +26,30 @@ GetCensusData <- function(geography) {
   ) %>%
     st_transform(crs = st_crs(4326)) %>%
     filter(!st_is_empty(.))
-  
+
   return(census_data)
 }
-
-
 ```
 
 ```{r ,echo=TRUE}
-#Read 2020 SEDAC SVI Overall percentile ranking data
+# Read 2020 SEDAC SVI Overall percentile ranking data
 
 # specify geo resolution
-GEOGRAPHIC_RESOLUTION = "county"
+GEOGRAPHIC_RESOLUTION <- "county"
 
-# download census data 
-census_data = GetCensusData(GEOGRAPHIC_RESOLUTION)
+# download census data
+census_data <- GetCensusData(GEOGRAPHIC_RESOLUTION)
 
 # read in SVI shapefile
 tif_file <- file.path("~/Thesis Work/Thesis Files/svi_2020_tract_overall_nad83.tif")
 
 # convert to .tif
-raster_data = rast(tif_file)
+raster_data <- rast(tif_file)
 
 plot(raster_data)
 
 # extracting SVI per county
-census_data$SVI <- exact_extract(raster_data, census_data[1], fun = 'mean')
+census_data$SVI <- exact_extract(raster_data, census_data[1], fun = "mean")
 
 census_data$SVI_tertile <- ntile(census_data$SVI, 3)
 
@@ -62,14 +57,16 @@ census_data$SVI_tertile <- ntile(census_data$SVI, 3)
 census_data$SVI_tertile <- factor(census_data$SVI_tertile, levels = 1:3, labels = c("Low", "Medium", "High"))
 
 
-plot1 = ggplot() +
+plot1 <- ggplot() +
   geom_sf(data = census_data, aes(fill = SVI_tertile)) +
   labs(title = "SVI Tertile by Census Tract") +
   theme_minimal() +
-  theme(axis.text = element_blank(), 
-        axis.title = element_blank(),
-        panel.grid = element_blank(),
-        plot.title = element_text(family = "Times New Roman", hjust = 0.5))
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    plot.title = element_text(family = "Times New Roman", hjust = 0.5)
+  )
 
 
 library(ggplot2)
@@ -80,16 +77,20 @@ tertile_colors <- c("Low" = "blue", "Medium" = "orange", "High" = "skyblue")
 # Create the plot
 plot1 <- ggplot() +
   geom_sf(data = census_data, aes(fill = SVI_tertile), color = "white") +
-  scale_fill_manual(name = "SVI Tertile",
-                    values = tertile_colors,
-                    breaks = c("Low", "Medium", "High"),
-                    labels = c("Low", "Medium", "High")) +
+  scale_fill_manual(
+    name = "SVI Tertile",
+    values = tertile_colors,
+    breaks = c("Low", "Medium", "High"),
+    labels = c("Low", "Medium", "High")
+  ) +
   labs(title = "SVI Tertile by Census Tract") +
   theme_minimal() +
-  theme(axis.text = element_blank(), 
-        axis.title = element_blank(),
-        panel.grid = element_blank(),
-        plot.title = element_text(family = "Times New Roman", hjust = 0.5))
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    plot.title = element_text(family = "Times New Roman", hjust = 0.5)
+  )
 
 # Display the plot
 print(plot1)
@@ -97,18 +98,15 @@ print(plot1)
 
 
 
-census_data = st_drop_geometry(census_data)
+census_data <- st_drop_geometry(census_data)
 
-census_data = as.data.frame(census_data)
+census_data <- as.data.frame(census_data)
 
 census_data <- census_data[, !names(census_data) %in% "Total_pop"]
-
 ```
 
 ## Save Data
 
 ```{r ,echo=TRUE}
-
-#write.csv(census_data, "~/Thesis Work/Thesis Files/SVI_data.csv", row.names = FALSE)
-
+# write.csv(census_data, "~/Thesis Work/Thesis Files/SVI_data.csv", row.names = FALSE)
 ```
